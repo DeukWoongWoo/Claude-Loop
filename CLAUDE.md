@@ -21,8 +21,20 @@ internal/
     validation.go           # CLI validation logic
     *_test.go               # Unit tests (95%+ coverage)
   version/version.go        # Version info (set via ldflags)
-  config/                   # Principles YAML loading (TBD)
-  loop/                     # Main loop engine (TBD)
+  config/
+    types.go                # Preset, Principles, Layer0, Layer1 structs
+    defaults.go             # Preset defaults (startup, enterprise, opensource)
+    validation.go           # Schema validation (version, date, 1-10 range)
+    loader.go               # YAML file loading
+    *_test.go               # Unit tests (99% coverage)
+  loop/
+    types.go                # Config, State, StopReason, ClaudeClient interface
+    errors.go               # LoopError, IterationError types
+    limits.go               # LimitChecker (cost/time/runs)
+    completion.go           # CompletionDetector (signal detection)
+    iteration.go            # IterationHandler (single iteration)
+    executor.go             # Executor (main loop orchestration)
+    *_test.go               # Unit tests (98% coverage)
   claude/                   # Claude CLI wrapper (TBD)
   git/                      # Git/worktree operations (TBD)
   github/                   # PR workflow (TBD)
