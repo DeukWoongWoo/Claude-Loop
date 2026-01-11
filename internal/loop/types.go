@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/DeukWoongWoo/claude-loop/internal/cli"
+	"github.com/DeukWoongWoo/claude-loop/internal/config"
 )
 
 // ClaudeClient is the interface for executing Claude Code iterations.
@@ -71,6 +72,11 @@ type Config struct {
 	MaxConsecutiveErrors int // Default: 3
 	DryRun               bool
 	OnProgress           func(state *State) // Optional progress callback (nil allowed)
+
+	// Prompt builder fields
+	NotesFile                string             // Path to shared notes file
+	Principles               *config.Principles // Loaded principles (may be nil)
+	NeedsPrincipleCollection bool               // Whether principle collection is needed (first run)
 }
 
 // DefaultConfig returns a Config with default values.
@@ -83,6 +89,7 @@ func DefaultConfig() *Config {
 }
 
 // ConfigFromFlags creates a Config from CLI Flags.
+// Note: Principles and NeedsPrincipleCollection must be set separately after loading principles.
 func ConfigFromFlags(f *cli.Flags) *Config {
 	return &Config{
 		Prompt:               f.Prompt,
@@ -93,6 +100,7 @@ func ConfigFromFlags(f *cli.Flags) *Config {
 		CompletionThreshold:  f.CompletionThreshold,
 		MaxConsecutiveErrors: 3,
 		DryRun:               f.DryRun,
+		NotesFile:            f.NotesFile,
 	}
 }
 

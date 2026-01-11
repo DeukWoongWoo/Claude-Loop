@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DeukWoongWoo/claude-loop/internal/prompt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +50,7 @@ type SlowMockClaudeClient struct {
 	CallCount int
 }
 
-func (m *SlowMockClaudeClient) Execute(ctx context.Context, prompt string) (*IterationResult, error) {
+func (m *SlowMockClaudeClient) Execute(ctx context.Context, promptText string) (*IterationResult, error) {
 	m.CallCount++
 
 	select {
@@ -64,10 +65,24 @@ func (m *SlowMockClaudeClient) Execute(ctx context.Context, prompt string) (*Ite
 	}
 }
 
+// mockPromptBuilder is a mock implementation of prompt.Builder for testing.
+type mockPromptBuilder struct {
+	result *prompt.BuildResult
+	err    error
+}
+
+func (m *mockPromptBuilder) Build(ctx prompt.BuildContext) (*prompt.BuildResult, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.result, nil
+}
+
 func TestIterationHandler_Execute_Success(t *testing.T) {
 	config := &Config{
 		Prompt:           "test prompt",
 		CompletionSignal: "DONE",
+		NotesFile:        "NOTES.md",
 	}
 
 	mock := &MockClaudeClient{
@@ -89,13 +104,19 @@ func TestIterationHandler_Execute_Success(t *testing.T) {
 	assert.Equal(t, 1, state.TotalIterations)
 	assert.Equal(t, 0.05, state.TotalCost)
 	assert.Equal(t, 0, state.ErrorCount)
-	assert.Equal(t, "test prompt", mock.LastPrompt)
+	// Enhanced prompt should contain user prompt
+	assert.Contains(t, mock.LastPrompt, "test prompt")
+	// Enhanced prompt should contain workflow context
+	assert.Contains(t, mock.LastPrompt, "CONTINUOUS WORKFLOW CONTEXT")
+	// Completion signal should be replaced
+	assert.Contains(t, mock.LastPrompt, "DONE")
 }
 
 func TestIterationHandler_Execute_WithCompletionSignal(t *testing.T) {
 	config := &Config{
 		Prompt:           "test prompt",
 		CompletionSignal: "DONE",
+		NotesFile:        "NOTES.md",
 	}
 
 	mock := &MockClaudeClient{
@@ -303,4 +324,18 @@ func TestNewIterationHandler(t *testing.T) {
 	assert.Equal(t, config, handler.config)
 	assert.Equal(t, client, handler.client)
 	assert.NotNil(t, handler.completionDetector)
+	assert.NotNil(t, handler.promptBuilder)
+}
+
+func TestNewIterationHandlerWithBuilder(t *testing.T) {
+	config := &Config{Prompt: "test"}
+	client := NewMockClient()
+	mockBuilder := &mockPromptBuilder{
+		result: &prompt.BuildResult{Prompt: "custom prompt"},
+	}
+
+	handler := NewIterationHandlerWithBuilder(config, client, mockBuilder)
+
+	assert.NotNil(t, handler)
+	assert.Equal(t, mockBuilder, handler.promptBuilder)
 }

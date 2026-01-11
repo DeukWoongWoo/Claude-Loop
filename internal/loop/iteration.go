@@ -3,6 +3,8 @@ package loop
 import (
 	"context"
 	"time"
+
+	"github.com/DeukWoongWoo/claude-loop/internal/prompt"
 )
 
 // IterationHandler handles the execution of a single iteration.
@@ -10,6 +12,7 @@ type IterationHandler struct {
 	config             *Config
 	client             ClaudeClient
 	completionDetector *CompletionDetector
+	promptBuilder      prompt.Builder
 }
 
 // NewIterationHandler creates a new IterationHandler.
@@ -18,6 +21,18 @@ func NewIterationHandler(config *Config, client ClaudeClient) *IterationHandler 
 		config:             config,
 		client:             client,
 		completionDetector: NewCompletionDetector(config),
+		promptBuilder:      prompt.NewBuilder(),
+	}
+}
+
+// NewIterationHandlerWithBuilder creates a new IterationHandler with a custom prompt builder.
+// This is primarily useful for testing.
+func NewIterationHandlerWithBuilder(config *Config, client ClaudeClient, builder prompt.Builder) *IterationHandler {
+	return &IterationHandler{
+		config:             config,
+		client:             client,
+		completionDetector: NewCompletionDetector(config),
+		promptBuilder:      builder,
 	}
 }
 
@@ -31,8 +46,29 @@ func (ih *IterationHandler) Execute(ctx context.Context, state *State) (*Iterati
 		return ih.executeDryRun(state)
 	}
 
-	// Execute Claude iteration
-	result, err := ih.client.Execute(ctx, ih.config.Prompt)
+	// Build enhanced prompt
+	// Use SuccessfulIterations to determine if this is the first successful run,
+	// so principle collection isn't skipped if the first attempt failed.
+	buildCtx := prompt.BuildContext{
+		UserPrompt:               ih.config.Prompt,
+		Principles:               ih.config.Principles,
+		NeedsPrincipleCollection: ih.config.NeedsPrincipleCollection && state.SuccessfulIterations == 0,
+		CompletionSignal:         ih.config.CompletionSignal,
+		NotesFile:                ih.config.NotesFile,
+		Iteration:                state.TotalIterations,
+	}
+
+	buildResult, err := ih.promptBuilder.Build(buildCtx)
+	if err != nil {
+		return nil, &IterationError{
+			Iteration: state.TotalIterations,
+			Message:   "failed to build prompt",
+			Err:       err,
+		}
+	}
+
+	// Execute Claude iteration with enhanced prompt
+	result, err := ih.client.Execute(ctx, buildResult.Prompt)
 	if err != nil {
 		return nil, &IterationError{
 			Iteration: state.TotalIterations,
