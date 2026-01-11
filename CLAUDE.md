@@ -15,7 +15,11 @@ Autonomous AI development loop CLI - Go migration from bash (2600+ lines).
 ```
 cmd/claude-loop/main.go     # Entry point
 internal/
-  cli/root.go               # Cobra root command (28 flags)
+  cli/
+    root.go                 # Cobra root command, flag registration
+    flags.go                # Flags struct, defaults
+    validation.go           # CLI validation logic
+    *_test.go               # Unit tests (95%+ coverage)
   version/version.go        # Version info (set via ldflags)
   config/                   # Principles YAML loading (TBD)
   loop/                     # Main loop engine (TBD)
@@ -53,9 +57,3 @@ test/golden/                # Output snapshots for regression
 - [CLI Contract](docs/CLI_CONTRACT.md) - 28 flags, exit codes, validation rules
 - [Feature Matrix](docs/FEATURE_MATRIX.md) - Migration progress tracking
 - [Golden Tests](test/golden/) - help.txt, version.txt snapshots
-
-## Migration Status
-
-Phase 1 (Current): Project initialization
-- See [DOU-137](https://linear.app/doublew/issue/DOU-137) for current task
-- Full issue list in Linear project: Claude Loop Go Migration

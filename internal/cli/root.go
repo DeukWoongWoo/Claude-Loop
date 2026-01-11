@@ -4,10 +4,14 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/DeukWoongWoo/claude-loop/internal/version"
 	"github.com/spf13/cobra"
 )
+
+// maxDurationStr holds the raw duration string for parsing.
+var maxDurationStr string
 
 var rootCmd = &cobra.Command{
 	Use:   "claude-loop",
@@ -38,7 +42,6 @@ OPTIONAL FLAGS:
     --notes-file <file>           Shared notes file for iteration context (default: "SHARED_TASK_NOTES.md")
     --worktree <name>             Run in a git worktree for parallel execution (creates if needed)
     --worktree-base-dir <path>    Base directory for worktrees (default: "../claude-loop-worktrees")
-    --cleanup-worktree            Remove worktree after completion
     --cleanup-worktree            Remove worktree after completion
     --list-worktrees              List all active git worktrees and exit
     --dry-run                     Simulate execution without making changes
@@ -129,11 +132,30 @@ NOTE:
 
 For more information, visit: https://github.com/DeukWoongWoo/claude-loop`,
 	Version: version.Version,
-	Run: func(cmd *cobra.Command, args []string) {
-		// If no arguments provided, show help
-		if len(args) == 0 {
-			cmd.Help()
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// Parse duration string to time.Duration
+		if err := parseDuration(); err != nil {
+			return err
 		}
+		// Skip validation for --list-worktrees (standalone action)
+		if globalFlags.ListWorktrees {
+			return nil
+		}
+		// Skip validation if no flags provided (will show help)
+		if globalFlags.Prompt == "" && globalFlags.MaxRuns == 0 && globalFlags.MaxCost == 0 && maxDurationStr == "" {
+			return nil
+		}
+		// Validate flags
+		return globalFlags.Validate()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		// If no arguments and no prompt provided, show help
+		if len(args) == 0 && globalFlags.Prompt == "" {
+			_ = cmd.Help()
+			return
+		}
+		// TODO: Main loop execution will be implemented in DOU-140
+		fmt.Println("Main loop execution not yet implemented")
 	},
 }
 
@@ -149,13 +171,105 @@ var updateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
+	configureCommand(rootCmd)
+	registerFlags(rootCmd)
+}
 
-	// Set custom version template to match bash output
-	rootCmd.SetVersionTemplate("claude-loop version {{.Version}}\n")
-
-	// Set custom help template to match bash output exactly (no Cobra auto-generated usage)
-	rootCmd.SetHelpTemplate(`{{.Long}}
+// configureCommand sets version and help templates on a command.
+func configureCommand(cmd *cobra.Command) {
+	cmd.SetVersionTemplate("claude-loop version {{.Version}}\n")
+	cmd.SetHelpTemplate(`{{.Long}}
 `)
+}
+
+// registerFlags registers all CLI flags on the given command.
+// This centralizes flag registration to avoid duplication between init() and NewRootCmd().
+func registerFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
+	f := globalFlags
+
+	// Required options
+	flags.StringVarP(&f.Prompt, "prompt", "p", "", "The prompt/goal for Claude Code to work on")
+	flags.IntVarP(&f.MaxRuns, "max-runs", "m", 0, "Maximum number of successful iterations")
+	flags.Float64Var(&f.MaxCost, "max-cost", 0, "Maximum cost in USD to spend")
+	flags.StringVar(&maxDurationStr, "max-duration", "", "Maximum duration to run (e.g., \"2h\", \"30m\")")
+
+	// GitHub configuration
+	flags.StringVar(&f.Owner, "owner", "", "GitHub repository owner")
+	flags.StringVar(&f.Repo, "repo", "", "GitHub repository name")
+
+	// Commit & Branch management
+	flags.BoolVar(&f.DisableCommits, "disable-commits", false, "Disable automatic commits and PR creation")
+	flags.BoolVar(&f.DisableBranches, "disable-branches", false, "Commit on current branch without creating branches or PRs")
+	flags.StringVar(&f.GitBranchPrefix, "git-branch-prefix", "claude-loop/", "Branch prefix for iterations")
+	flags.StringVar(&f.MergeStrategy, "merge-strategy", "squash", "PR merge strategy: squash, merge, or rebase")
+
+	// Iteration control
+	flags.StringVar(&f.CompletionSignal, "completion-signal", "CONTINUOUS_CLAUDE_PROJECT_COMPLETE", "Phrase that agents output when project is complete")
+	flags.IntVar(&f.CompletionThreshold, "completion-threshold", 3, "Number of consecutive signals to stop early")
+	flags.BoolVar(&f.DryRun, "dry-run", false, "Simulate execution without making changes")
+
+	// Review & CI
+	flags.StringVarP(&f.ReviewPrompt, "review-prompt", "r", "", "Run a reviewer pass after each iteration")
+	flags.BoolVar(&f.DisableCIRetry, "disable-ci-retry", false, "Disable automatic CI failure retry")
+	flags.IntVar(&f.CIRetryMax, "ci-retry-max", 1, "Maximum CI fix attempts per PR")
+
+	// Shared state
+	flags.StringVar(&f.NotesFile, "notes-file", "SHARED_TASK_NOTES.md", "Shared notes file for iteration context")
+
+	// Worktree support
+	flags.StringVar(&f.Worktree, "worktree", "", "Run in a git worktree for parallel execution")
+	flags.StringVar(&f.WorktreeBaseDir, "worktree-base-dir", "../claude-loop-worktrees", "Base directory for worktrees")
+	flags.BoolVar(&f.CleanupWorktree, "cleanup-worktree", false, "Remove worktree after completion")
+	flags.BoolVar(&f.ListWorktrees, "list-worktrees", false, "List all active git worktrees and exit")
+
+	// Principles framework
+	flags.BoolVar(&f.ResetPrinciples, "reset-principles", false, "Force re-collection of principles")
+	flags.StringVar(&f.PrinciplesFile, "principles-file", ".claude/principles.yaml", "Custom principles file path")
+	flags.BoolVar(&f.LogDecisions, "log-decisions", false, "Enable decision logging")
+
+	// Update management
+	flags.BoolVar(&f.AutoUpdate, "auto-update", false, "Automatically install updates when available")
+	flags.BoolVar(&f.DisableUpdates, "disable-updates", false, "Skip all update checks and prompts")
+}
+
+// parseDuration parses the max-duration flag if provided.
+func parseDuration() error {
+	if maxDurationStr != "" {
+		d, err := time.ParseDuration(maxDurationStr)
+		if err != nil {
+			return fmt.Errorf("invalid duration format %q: %w", maxDurationStr, err)
+		}
+		globalFlags.MaxDuration = d
+	}
+	return nil
+}
+
+// NewRootCmd creates a new root command for testing.
+// This allows tests to work with a fresh command instance.
+func NewRootCmd() *cobra.Command {
+	ResetFlags()
+	maxDurationStr = ""
+
+	cmd := &cobra.Command{
+		Use:     "claude-loop",
+		Short:   "Autonomous AI development loop with 4-Layer Principles Framework",
+		Long:    rootCmd.Long,
+		Version: rootCmd.Version,
+		PreRunE: rootCmd.PreRunE,
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 0 && globalFlags.Prompt == "" {
+				_ = cmd.Help()
+				return
+			}
+			fmt.Println("Main loop execution not yet implemented")
+		},
+	}
+
+	configureCommand(cmd)
+	registerFlags(cmd)
+
+	return cmd
 }
 
 // Execute runs the root command.
