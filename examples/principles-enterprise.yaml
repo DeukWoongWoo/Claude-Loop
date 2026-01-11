@@ -1,0 +1,37 @@
+# Continuous Claude Principles Configuration
+# Preset: Enterprise/Production
+# Description: Stability first, thorough testing, incremental changes
+
+version: "2.3"
+preset: enterprise
+created_at: "2026-01-11"
+
+# Layer 0: Product Principles
+layer0:
+  trust_architecture: 9    # High verification required
+  curation_model: 8        # Approved sources only
+  scope_philosophy: 5      # Balanced scope
+  monetization_model: 5    # B2B
+  privacy_posture: 8       # Minimal data + compliance
+  ux_philosophy: 6         # Balance features and ease
+  authority_stance: 7      # Strong guidance
+  auditability: 9          # Full audit trail (key for enterprise)
+  interoperability: 5      # Prefer standard APIs
+
+# Layer 1: Development Principles
+layer1:
+  speed_correctness: 8     # Quality first (key for enterprise)
+  innovation_stability: 7  # Proven technologies preferred
+  blast_radius: 9          # Minimal changes (key for enterprise)
+  clarity_of_intent: 7     # Explicit declarations
+  reversibility_priority: 8 # Easy rollback required
+  security_posture: 9      # Defense in depth
+  urgency_tiers: 5         # Situation-dependent
+  cost_efficiency: 5       # Balanced
+  migration_burden: 3      # Minimize user impact (legacy compatibility)
+
+# Usage Notes:
+# - auditability=9: Every decision must be traceable
+# - blast_radius=9: Small, incremental changes only
+# - security_posture=9: Security review required for all changes
+# - Suitable for: financial services, healthcare, government

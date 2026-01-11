@@ -1,0 +1,7 @@
+---
+timestamp: "2026-01-11T13:28:47Z"
+iteration: 1
+decision: "Use minimal authentication "
+rationale: "Scope=3 requires MVP focus"
+preset: "startup"
+council_invoked: false

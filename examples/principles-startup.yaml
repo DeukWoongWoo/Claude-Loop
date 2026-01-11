@@ -1,0 +1,36 @@
+# Continuous Claude Principles Configuration
+# Preset: Startup/MVP
+# Description: Fast validation, focus on core features, balanced speed/quality
+
+version: "2.3"
+preset: startup
+created_at: "2026-01-11"
+
+# Layer 0: Product Principles
+layer0:
+  trust_architecture: 7    # Moderate verification
+  curation_model: 6        # Team judgment respected
+  scope_philosophy: 3      # MVP focus (key principle for startups)
+  monetization_model: 5    # B2B or paid
+  privacy_posture: 7       # Minimal data collection
+  ux_philosophy: 4         # Simple-first
+  authority_stance: 6      # Provide guidance
+  auditability: 5          # Basic logging
+  interoperability: 7      # Accept external integrations
+
+# Layer 1: Development Principles
+layer1:
+  speed_correctness: 4     # Slightly favor speed (key principle for startups)
+  innovation_stability: 6  # Slightly prefer stability
+  blast_radius: 7          # Prefer small changes
+  clarity_of_intent: 6     # Prefer explicit
+  reversibility_priority: 7 # Easy rollback
+  security_posture: 7      # Adequate security
+  urgency_tiers: 3         # Normal development pace
+  cost_efficiency: 6       # Balance (core in-house, peripherals external)
+  migration_burden: 5      # Balanced
+
+# Usage Notes:
+# - scope_philosophy=3: Focus on core value, defer "nice to have" features
+# - speed_correctness=4: Ship fast, fix issues post-launch when needed
+# - Customize by editing values (1-10 scale)

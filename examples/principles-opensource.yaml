@@ -1,0 +1,37 @@
+# Continuous Claude Principles Configuration
+# Preset: Open Source/Library
+# Description: Community contributions, API stability, documentation focus
+
+version: "2.3"
+preset: opensource
+created_at: "2026-01-11"
+
+# Layer 0: Product Principles
+layer0:
+  trust_architecture: 4    # Open participation welcome
+  curation_model: 5        # Maintainer review
+  scope_philosophy: 2      # Do one thing well (Unix philosophy)
+  monetization_model: 1    # Non-profit
+  privacy_posture: 10      # No data collection
+  ux_philosophy: 6         # Balance power and ease
+  authority_stance: 3      # Neutral tool
+  auditability: 4          # Basic logging
+  interoperability: 8      # Open integration (works with other libraries)
+
+# Layer 1: Development Principles
+layer1:
+  speed_correctness: 8     # Correctness matters (library consumers depend on it)
+  innovation_stability: 6  # Learning + stability balance
+  blast_radius: 9          # Small PRs preferred
+  clarity_of_intent: 8     # Explicit API design
+  reversibility_priority: 7 # Understandable code
+  security_posture: 7      # Adequate security
+  urgency_tiers: 2         # Relaxed pace (no rush)
+  cost_efficiency: 8       # Cost-conscious (prefer free tools)
+  migration_burden: 7      # Breaking changes OK for better API (semver)
+
+# Usage Notes:
+# - scope_philosophy=2: Focused library, not a framework
+# - migration_burden=7: Breaking changes allowed with major version bumps
+# - trust_architecture=4: Welcome contributions, review before merge
+# - Suitable for: npm packages, Python libraries, CLI tools
