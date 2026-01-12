@@ -35,9 +35,33 @@ internal/
     iteration.go            # IterationHandler (single iteration)
     executor.go             # Executor (main loop orchestration)
     *_test.go               # Unit tests (98% coverage)
-  claude/                   # Claude CLI wrapper (TBD)
-  git/                      # Git/worktree operations (TBD)
-  github/                   # PR workflow (TBD)
+  claude/
+    client.go               # Claude Code subprocess wrapper
+    parser.go               # JSON stream parser
+    errors.go               # ClaudeError, ParseError types
+    *_test.go               # Unit tests
+  git/
+    branch.go               # Branch operations (create, switch, delete)
+    worktree.go             # Git worktree management
+    commit.go               # Git staging, commit, push operations
+    errors.go               # GitError, BranchError, WorktreeError types
+    *_test.go               # Unit tests
+  github/
+    repo.go                 # Repository info and detection
+    pr.go                   # PR creation and management
+    checks.go               # CI status monitoring
+    ci.go                   # CI failure analysis
+    cifix.go                # CI auto-fix orchestration
+    workflow.go             # Complete PR workflow manager
+    types.go                # Config types (WorkflowConfig, CIFixConfig)
+    errors.go               # GitHubError, PRError, CheckError types
+    *_test.go               # Unit tests
+  prompt/
+    builder.go              # Main prompt builder
+    templates.go            # Prompt templates
+    cifix.go                # CI fix prompt builder
+    notes.go                # Notes file loader
+    *_test.go               # Unit tests
   update/                   # Auto-update (TBD)
 docs/
   CLI_CONTRACT.md           # CLI interface contract
