@@ -71,6 +71,7 @@ var (
 	ErrWorktreeExists   = &GitError{Operation: "worktree", Message: "worktree already exists"}
 	ErrWorktreeNotFound = &GitError{Operation: "worktree", Message: "worktree not found"}
 	ErrDirtyWorkingTree = &GitError{Operation: "repo", Message: "working tree has uncommitted changes"}
+	ErrNothingToCommit  = &GitError{Operation: "commit", Message: "nothing to commit"}
 )
 
 // IsGitError checks if an error is a GitError.

@@ -3,6 +3,8 @@ package github
 import (
 	"context"
 	"fmt"
+
+	"github.com/DeukWoongWoo/claude-loop/internal/loop"
 )
 
 // WorkflowManager orchestrates the complete PR workflow.
@@ -89,18 +91,32 @@ func (w *WorkflowManager) RunPRWorkflow(ctx context.Context, opts *PRCreateOptio
 	}
 
 	err = w.monitor.WaitForChecks(ctx, prNum, waitOpts)
-	if err != nil {
-		// Get final check summary for result
-		summary, _ := w.monitor.GetCheckStatus(ctx, prNum)
-		result.CheckSummary = summary
-		result.MergeError = err
-		return result, err
+	checksPassed := err == nil
+
+	// Try CI fix if enabled and checks failed
+	if !checksPassed && w.shouldAttemptCIFix(cfg, err) {
+		if cfg.OnProgress != nil {
+			cfg.OnProgress("CI checks failed, attempting auto-fix...")
+		}
+
+		fixResult, fixErr := w.AttemptCIFix(ctx, prNum, opts.Title, cfg.ClaudeClient, cfg.CIFixConfig)
+		if fixErr == nil && fixResult.Success {
+			if cfg.OnProgress != nil {
+				cfg.OnProgress(fmt.Sprintf("CI fixed on attempt %d!", fixResult.FixedOnAttempt))
+			}
+			checksPassed = true
+			err = nil
+		}
 	}
 
 	// Get final check summary
 	summary, _ := w.monitor.GetCheckStatus(ctx, prNum)
 	result.CheckSummary = summary
 
+	if !checksPassed {
+		result.MergeError = err
+		return result, err
+	}
 	if cfg.OnProgress != nil {
 		cfg.OnProgress("All checks passed!")
 	}
@@ -179,4 +195,29 @@ func (w *WorkflowManager) GetPRManager() *PRManager {
 // GetCheckMonitor returns the underlying CheckMonitor.
 func (w *WorkflowManager) GetCheckMonitor() *CheckMonitor {
 	return w.monitor
+}
+
+// AttemptCIFix attempts to fix CI failures for a PR.
+// This creates a CIFixManager and runs the fix workflow.
+func (w *WorkflowManager) AttemptCIFix(ctx context.Context, prNumber int, branchName string, claudeClient loop.ClaudeClient, config *CIFixConfig) (*CIFixResult, error) {
+	if config == nil {
+		config = DefaultCIFixConfig()
+	}
+	config.PRNumber = prNumber
+	config.BranchName = branchName
+
+	fixManager := NewCIFixManager(w.executor, nil, w.repo, claudeClient, config)
+	return fixManager.AttemptFix(ctx)
+}
+
+// shouldAttemptCIFix determines if CI fix should be attempted based on config and error.
+func (w *WorkflowManager) shouldAttemptCIFix(cfg *WorkflowConfig, err error) bool {
+	if cfg.CIFixConfig == nil || cfg.CIFixConfig.DisableRetry || cfg.ClaudeClient == nil {
+		return false
+	}
+	checkErr, ok := err.(*CheckError)
+	if !ok || checkErr.Summary == nil {
+		return false
+	}
+	return checkErr.Summary.Failed > 0
 }

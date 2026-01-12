@@ -5,6 +5,8 @@ import (
 	"context"
 	"os/exec"
 	"time"
+
+	"github.com/DeukWoongWoo/claude-loop/internal/loop"
 )
 
 // CommandExecutor abstracts exec.Command for testing.
@@ -123,6 +125,12 @@ type WorkflowConfig struct {
 	DeleteBranch  bool                        // Delete branch after merge
 	OnProgress    func(status string)         // Progress callback
 	OnCheckStatus func(summary *CheckSummary) // Check status callback
+
+	// CIFixConfig enables CI failure auto-fix (nil disables)
+	CIFixConfig *CIFixConfig
+
+	// ClaudeClient is required if CIFixConfig is set
+	ClaudeClient loop.ClaudeClient
 }
 
 // DefaultWorkflowConfig returns WorkflowConfig with default values.
