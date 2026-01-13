@@ -9,11 +9,9 @@ import (
 	"github.com/DeukWoongWoo/claude-loop/internal/config"
 )
 
-// ClaudeClient is the interface for executing Claude Code iterations.
+// ClaudeClient executes Claude Code iterations.
 // This abstraction allows testing the loop without a real Claude client.
 type ClaudeClient interface {
-	// Execute runs a single Claude Code iteration with the given prompt.
-	// Returns the result including cost, output, and any completion signal detected.
 	Execute(ctx context.Context, prompt string) (*IterationResult, error)
 }
 
@@ -47,6 +45,8 @@ type State struct {
 	TotalCost             float64       // Accumulated USD cost
 	StartTime             time.Time     // Loop start time
 	LastIterationTime     time.Time     // When last iteration completed
+	ReviewerCost          float64       // Accumulated reviewer pass cost (separate tracking)
+	ReviewerErrorCount    int           // Consecutive reviewer error counter (reset on success)
 }
 
 // NewState creates a new State with initialized start time.
@@ -77,6 +77,9 @@ type Config struct {
 	NotesFile                string             // Path to shared notes file
 	Principles               *config.Principles // Loaded principles (may be nil)
 	NeedsPrincipleCollection bool               // Whether principle collection is needed (first run)
+
+	// Reviewer fields
+	ReviewPrompt string // Reviewer pass prompt (empty = disabled)
 }
 
 // DefaultConfig returns a Config with default values.
@@ -101,6 +104,7 @@ func ConfigFromFlags(f *cli.Flags) *Config {
 		MaxConsecutiveErrors: 3,
 		DryRun:               f.DryRun,
 		NotesFile:            f.NotesFile,
+		ReviewPrompt:         f.ReviewPrompt,
 	}
 }
 

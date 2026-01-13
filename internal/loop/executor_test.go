@@ -340,3 +340,316 @@ func TestExecutor_Run_NoLimits(t *testing.T) {
 	assert.Equal(t, StopReasonContextCancelled, result.StopReason)
 	assert.True(t, result.State.SuccessfulIterations > 0)
 }
+
+// --- Reviewer Integration Tests ---
+
+func TestExecutor_WithReviewer_Success(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              2,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "run tests",
+	}
+
+	// Mock client that returns different results for main vs reviewer iterations
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			// Iteration 1: main
+			{Output: "main output 1", Cost: 0.10},
+			// Iteration 1: reviewer
+			{Output: "review output 1", Cost: 0.02},
+			// Iteration 2: main
+			{Output: "main output 2", Cost: 0.10},
+			// Iteration 2: reviewer
+			{Output: "review output 2", Cost: 0.02},
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+
+	// Verify reviewer is initialized
+	assert.NotNil(t, executor.reviewer)
+
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonMaxRuns, result.StopReason)
+	assert.Equal(t, 2, result.State.SuccessfulIterations)
+
+	// Each successful iteration calls main + reviewer
+	assert.Equal(t, 4, mock.CallCount)
+
+	// Total cost should include both main and reviewer
+	// Main: 0.10 + 0.10 = 0.20, Reviewer: 0.02 + 0.02 = 0.04
+	assert.InDelta(t, 0.24, result.State.TotalCost, 0.01)
+
+	// Reviewer cost tracked separately
+	assert.InDelta(t, 0.04, result.State.ReviewerCost, 0.01)
+}
+
+func TestExecutor_WithReviewer_ReviewerError_Continues(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              3,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "run tests",
+	}
+
+	// First reviewer call fails, second succeeds
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			{Output: "main 1", Cost: 0.10},
+			nil, // Reviewer 1 will error
+			{Output: "main 2", Cost: 0.10},
+			{Output: "review 2", Cost: 0.02},
+			{Output: "main 3", Cost: 0.10},
+			{Output: "review 3", Cost: 0.02},
+		},
+		Errors: []error{
+			nil,                           // main 1 success
+			errors.New("reviewer failed"), // reviewer 1 fails
+			nil,                           // main 2 success
+			nil,                           // reviewer 2 success
+			nil,                           // main 3 success
+			nil,                           // reviewer 3 success
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonMaxRuns, result.StopReason)
+
+	// Should have 3 successful iterations (even though 1 reviewer failed)
+	assert.Equal(t, 3, result.State.SuccessfulIterations)
+
+	// Reviewer error count should be reset after success
+	assert.Equal(t, 0, result.State.ReviewerErrorCount)
+}
+
+func TestExecutor_WithReviewer_ConsecutiveErrors_Aborts(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              10,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "run tests",
+	}
+
+	// Reviewer fails 3 times consecutively
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			{Output: "main 1", Cost: 0.10},
+			nil, // Reviewer 1 errors
+			{Output: "main 2", Cost: 0.10},
+			nil, // Reviewer 2 errors
+			{Output: "main 3", Cost: 0.10},
+			nil, // Reviewer 3 errors - triggers abort
+		},
+		Errors: []error{
+			nil, errors.New("reviewer error 1"),
+			nil, errors.New("reviewer error 2"),
+			nil, errors.New("reviewer error 3"),
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonConsecutiveErrors, result.StopReason)
+	assert.NotNil(t, result.LastError)
+	assert.Equal(t, 3, result.State.ReviewerErrorCount)
+}
+
+func TestExecutor_WithReviewer_CompletionSignal(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              10,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "check completion",
+		CompletionSignal:     "DONE",
+		CompletionThreshold:  3, // Need 3 consecutive signals
+	}
+
+	// Both main iteration and reviewer output contribute to signal count
+	// Sequence: main1 (1), review1 (2), main2 (3) -> threshold reached after main2
+	// But reviewer2 still runs, making count 4
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			// Iteration 1: main has DONE (count=1), reviewer has DONE (count=2)
+			{Output: "main DONE", Cost: 0.10},
+			{Output: "review DONE", Cost: 0.02},
+			// Iteration 2: main has DONE (count=3), reviewer has DONE (count=4)
+			{Output: "main DONE", Cost: 0.10},
+			{Output: "review DONE", Cost: 0.02},
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonCompletionSignal, result.StopReason)
+	// Threshold is 3, but reviewer also runs, so final count is 4
+	assert.True(t, result.State.CompletionSignalCount >= 3)
+}
+
+func TestExecutor_WithoutReviewer(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              2,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "", // No reviewer
+	}
+
+	mock := NewMockClient()
+	executor := NewExecutor(config, mock)
+
+	// Verify reviewer is not initialized
+	assert.Nil(t, executor.reviewer)
+
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonMaxRuns, result.StopReason)
+	assert.Equal(t, 2, mock.CallCount) // Only main iterations, no reviewer
+	assert.Equal(t, 0.0, result.State.ReviewerCost)
+}
+
+func TestNewExecutor_WithReviewPrompt(t *testing.T) {
+	config := &Config{
+		Prompt:               "test",
+		ReviewPrompt:         "run tests",
+		MaxConsecutiveErrors: 5,
+	}
+	client := NewMockClient()
+
+	executor := NewExecutor(config, client)
+
+	assert.NotNil(t, executor)
+	assert.NotNil(t, executor.reviewer)
+
+	// Verify reviewer config is properly set
+	reviewerConfig := executor.reviewer.Config()
+	assert.Equal(t, "run tests", reviewerConfig.ReviewPrompt)
+	assert.Equal(t, 5, reviewerConfig.MaxConsecutiveErrors)
+}
+
+func TestNewExecutor_WithoutReviewPrompt(t *testing.T) {
+	config := &Config{
+		Prompt:       "test",
+		ReviewPrompt: "",
+	}
+	client := NewMockClient()
+
+	executor := NewExecutor(config, client)
+
+	assert.NotNil(t, executor)
+	assert.Nil(t, executor.reviewer)
+}
+
+func TestExecutor_WithReviewer_CompletionSignal_OnlyMainHasDone(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              10,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "run tests",
+		CompletionSignal:     "DONE",
+		CompletionThreshold:  3,
+	}
+
+	// Main iteration outputs DONE, but reviewer outputs "Tests passed" (no DONE)
+	// The completion signal count should NOT be reset by reviewer
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			// Iteration 1: main DONE (count=1), reviewer no DONE (count stays 1)
+			{Output: "Task DONE", Cost: 0.10},
+			{Output: "All tests passed", Cost: 0.02},
+			// Iteration 2: main DONE (count=2), reviewer no DONE (count stays 2)
+			{Output: "More work DONE", Cost: 0.10},
+			{Output: "Tests still passing", Cost: 0.02},
+			// Iteration 3: main DONE (count=3), threshold reached
+			{Output: "Final DONE", Cost: 0.10},
+			{Output: "Validated successfully", Cost: 0.02},
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonCompletionSignal, result.StopReason)
+	assert.Equal(t, 3, result.State.CompletionSignalCount)
+	assert.Equal(t, 3, result.State.SuccessfulIterations)
+}
+
+func TestExecutor_WithReviewer_CompletionSignal_ReviewerAlsoHasDone(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              10,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "check completion",
+		CompletionSignal:     "DONE",
+		CompletionThreshold:  3,
+	}
+
+	// Both main and reviewer output DONE - count should increment for both
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			// Iteration 1: main DONE (count=1), reviewer DONE (count=2)
+			{Output: "Task DONE", Cost: 0.10},
+			{Output: "Review DONE", Cost: 0.02},
+			// Iteration 2: main DONE (count=3), threshold reached after main
+			{Output: "More DONE", Cost: 0.10},
+			{Output: "Also DONE", Cost: 0.02}, // count=4
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonCompletionSignal, result.StopReason)
+	// Main contributes 2, reviewer contributes 2, total = 4
+	assert.Equal(t, 4, result.State.CompletionSignalCount)
+}
+
+func TestExecutor_WithReviewer_CompletionSignal_ResetOnNoDone(t *testing.T) {
+	config := &Config{
+		Prompt:               "main task",
+		MaxRuns:              10,
+		MaxConsecutiveErrors: 3,
+		ReviewPrompt:         "run tests",
+		CompletionSignal:     "DONE",
+		CompletionThreshold:  3,
+	}
+
+	// Main outputs DONE twice, then no DONE - should reset
+	mock := &MockClaudeClient{
+		Results: []*IterationResult{
+			// Iteration 1: main DONE (count=1), reviewer no DONE (count=1)
+			{Output: "DONE", Cost: 0.10},
+			{Output: "ok", Cost: 0.02},
+			// Iteration 2: main DONE (count=2), reviewer no DONE (count=2)
+			{Output: "DONE", Cost: 0.10},
+			{Output: "ok", Cost: 0.02},
+			// Iteration 3: main no DONE (count resets to 0), reviewer no DONE
+			{Output: "working", Cost: 0.10},
+			{Output: "ok", Cost: 0.02},
+			// Iteration 4: main DONE (count=1), reviewer DONE (count=2)
+			{Output: "DONE", Cost: 0.10},
+			{Output: "DONE", Cost: 0.02},
+			// Iteration 5: main DONE (count=3), threshold reached
+			{Output: "DONE", Cost: 0.10},
+			{Output: "ok", Cost: 0.02},
+		},
+	}
+
+	executor := NewExecutor(config, mock)
+	result, err := executor.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, StopReasonCompletionSignal, result.StopReason)
+	assert.Equal(t, 5, result.State.SuccessfulIterations)
+}

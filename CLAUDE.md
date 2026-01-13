@@ -62,6 +62,12 @@ internal/
     cifix.go                # CI fix prompt builder
     notes.go                # Notes file loader
     *_test.go               # Unit tests
+  reviewer/
+    types.go                # Reviewer interface, Config, Result, ClaudeClient
+    errors.go               # ReviewerError type
+    prompt.go               # Reviewer prompt builder
+    reviewer.go             # DefaultReviewer implementation
+    *_test.go               # Unit tests (96% coverage)
   update/
     types.go                # Core types, options (DownloaderOptions, InstallerOptions)
     errors.go               # UpdateError, VersionError, ChecksumError
