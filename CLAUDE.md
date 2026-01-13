@@ -62,7 +62,15 @@ internal/
     cifix.go                # CI fix prompt builder
     notes.go                # Notes file loader
     *_test.go               # Unit tests
-  update/                   # Auto-update (TBD)
+  update/
+    types.go                # Core types, options (DownloaderOptions, InstallerOptions)
+    errors.go               # UpdateError, VersionError, ChecksumError
+    version.go              # Semantic version parsing and comparison
+    checker.go              # GitHub release query via `gh` CLI
+    downloader.go           # Binary download, tar.gz/zip extraction, checksum
+    installer.go            # Binary replacement, restart, rollback
+    manager.go              # Update flow orchestration
+    *_test.go               # Unit tests (71% coverage)
 docs/
   CLI_CONTRACT.md           # CLI interface contract
   FEATURE_MATRIX.md         # Bash → Go migration tracking

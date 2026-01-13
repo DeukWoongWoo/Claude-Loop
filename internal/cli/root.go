@@ -2,10 +2,14 @@
 package cli
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/DeukWoongWoo/claude-loop/internal/update"
 	"github.com/DeukWoongWoo/claude-loop/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -165,8 +169,69 @@ var updateCmd = &cobra.Command{
 	Short: "Check for and install the latest version",
 	Long:  `Check for and install the latest version of claude-loop.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Update command not yet implemented")
+		ctx := context.Background()
+
+		manager := update.NewManager(&update.ManagerOptions{
+			AutoUpdate: true, // Force update when explicitly running update command
+			OnProgress: func(status string) {
+				fmt.Println(status)
+			},
+			CheckerOptions: update.DefaultCheckerOptions(version.Version),
+		})
+
+		result, err := manager.Update(ctx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println(result.Message)
+
+		if result.Updated && result.RestartRequired {
+			fmt.Println("Restarting...")
+			if err := manager.Restart(ctx, os.Args[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Restart failed: %v\n", err)
+				os.Exit(1)
+			}
+		}
 	},
+}
+
+// checkForUpdatesAtStartup checks for updates at startup.
+func checkForUpdatesAtStartup(ctx context.Context, flags *Flags) {
+	if flags.DisableUpdates {
+		return
+	}
+
+	manager := update.NewManager(&update.ManagerOptions{
+		AutoUpdate: flags.AutoUpdate,
+		OnPrompt: func(current, latest string) bool {
+			fmt.Printf("New version %s available (current: %s). Update? [Y/n]: ", latest, current)
+			reader := bufio.NewReader(os.Stdin)
+			response, err := reader.ReadString('\n')
+			if err != nil {
+				return false
+			}
+			response = strings.TrimSpace(strings.ToLower(response))
+			return response == "" || response == "y" || response == "yes"
+		},
+		OnProgress: func(status string) {
+			fmt.Println(status)
+		},
+		CheckerOptions: update.DefaultCheckerOptions(version.Version),
+	})
+
+	result, err := manager.CheckAndUpdate(ctx)
+	if err != nil {
+		// Non-fatal at startup, just warn
+		fmt.Fprintf(os.Stderr, "Warning: update check failed: %v\n", err)
+		return
+	}
+
+	if result.Updated && result.RestartRequired {
+		fmt.Println("Update installed. Please restart claude-loop.")
+		os.Exit(0)
+	}
 }
 
 func init() {
