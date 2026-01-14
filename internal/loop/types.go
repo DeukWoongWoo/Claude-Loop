@@ -47,6 +47,8 @@ type State struct {
 	LastIterationTime     time.Time     // When last iteration completed
 	ReviewerCost          float64       // Accumulated reviewer pass cost (separate tracking)
 	ReviewerErrorCount    int           // Consecutive reviewer error counter (reset on success)
+	CouncilCost           float64       // Accumulated council invocation cost
+	CouncilInvocations    int           // Number of council invocations
 }
 
 // NewState creates a new State with initialized start time.
@@ -80,6 +82,9 @@ type Config struct {
 
 	// Reviewer fields
 	ReviewPrompt string // Reviewer pass prompt (empty = disabled)
+
+	// Council fields
+	LogDecisions bool // Enable decision logging (--log-decisions)
 }
 
 // DefaultConfig returns a Config with default values.
@@ -105,6 +110,7 @@ func ConfigFromFlags(f *cli.Flags) *Config {
 		DryRun:               f.DryRun,
 		NotesFile:            f.NotesFile,
 		ReviewPrompt:         f.ReviewPrompt,
+		LogDecisions:         f.LogDecisions,
 	}
 }
 

@@ -68,6 +68,14 @@ internal/
     prompt.go               # Reviewer prompt builder
     reviewer.go             # DefaultReviewer implementation
     *_test.go               # Unit tests (96% coverage)
+  council/
+    types.go                # Council interface, Config, Result, Decision types
+    errors.go               # CouncilError type
+    detector.go             # ConflictDetector (regex pattern matching)
+    prompt.go               # PromptBuilder (R10 3-step resolution protocol)
+    logger.go               # DecisionLogger (.claude/principles-decisions.log)
+    council.go              # DefaultCouncil implementation
+    *_test.go               # Unit tests (93% coverage)
   update/
     types.go                # Core types, options (DownloaderOptions, InstallerOptions)
     errors.go               # UpdateError, VersionError, ChecksumError
@@ -98,6 +106,7 @@ test/
     executor_integration_test.go  # Executor + Reviewer integration tests
     workflow_integration_test.go  # GitHub workflow integration tests
     config_integration_test.go    # Config loading integration tests
+    council_integration_test.go   # Council conflict detection integration tests
   e2e/
     e2e_test.go             # E2E tests (binary build + execution)
   golden/                   # Output snapshots for regression

@@ -2,7 +2,9 @@ package loop
 
 import (
 	"context"
+	"time"
 
+	"github.com/DeukWoongWoo/claude-loop/internal/council"
 	"github.com/DeukWoongWoo/claude-loop/internal/reviewer"
 )
 
@@ -25,6 +27,25 @@ func (a *reviewerClientAdapter) Execute(ctx context.Context, prompt string) (*re
 	}, nil
 }
 
+// councilClientAdapter adapts loop.ClaudeClient to council.ClaudeClient
+// to avoid import cycles between packages.
+type councilClientAdapter struct {
+	client ClaudeClient
+}
+
+func (a *councilClientAdapter) Execute(ctx context.Context, prompt string) (*council.IterationResult, error) {
+	result, err := a.client.Execute(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+	return &council.IterationResult{
+		Output:                result.Output,
+		Cost:                  result.Cost,
+		Duration:              result.Duration,
+		CompletionSignalFound: result.CompletionSignalFound,
+	}, nil
+}
+
 // Executor is the main loop executor that orchestrates iteration execution.
 type Executor struct {
 	config             *Config
@@ -32,6 +53,7 @@ type Executor struct {
 	completionDetector *CompletionDetector
 	iterationHandler   *IterationHandler
 	reviewer           *reviewer.DefaultReviewer
+	council            *council.DefaultCouncil
 }
 
 // NewExecutor creates a new Executor with the given configuration and client.
@@ -49,6 +71,16 @@ func NewExecutor(config *Config, client ClaudeClient) *Executor {
 			ReviewPrompt:         config.ReviewPrompt,
 			MaxConsecutiveErrors: config.MaxConsecutiveErrors,
 		}, &reviewerClientAdapter{client: client})
+	}
+
+	// Initialize council if principles are loaded
+	if config.Principles != nil {
+		e.council = council.NewCouncil(&council.Config{
+			Principles:   config.Principles,
+			Preset:       config.Principles.Preset,
+			LogDecisions: config.LogDecisions,
+			LogFile:      ".claude/principles-decisions.log",
+		}, &councilClientAdapter{client: client})
 	}
 
 	return e
@@ -89,7 +121,7 @@ func (e *Executor) Run(ctx context.Context) (*LoopResult, error) {
 		}
 
 		// Execute single iteration
-		_, err := e.iterationHandler.Execute(ctx, state)
+		iterResult, err := e.iterationHandler.Execute(ctx, state)
 
 		if err != nil {
 			shouldContinue := e.iterationHandler.HandleError(state, err)
@@ -108,6 +140,11 @@ func (e *Executor) Run(ctx context.Context) (*LoopResult, error) {
 			}
 			// Continue to next iteration after error
 			continue
+		}
+
+		// Handle principle conflict detection and council invocation
+		if e.council != nil {
+			e.handleCouncil(ctx, state, iterResult.Output)
 		}
 
 		// Run reviewer pass if configured
@@ -175,4 +212,49 @@ func (e *Executor) runReviewerPass(ctx context.Context, state *State) error {
 	}
 
 	return nil
+}
+
+// handleCouncil checks for principle conflicts and invokes council if needed.
+// This is advisory and does not block the loop on failure (graceful degradation).
+func (e *Executor) handleCouncil(ctx context.Context, state *State, output string) {
+	// Check for unresolved conflicts first
+	hasConflict := e.council.DetectConflict(output)
+
+	if hasConflict {
+		// Invoke council for resolution
+		result, err := e.council.Resolve(ctx, output)
+		if err != nil {
+			// Log failure but don't block - council is advisory
+			return
+		}
+
+		// Update state with council cost
+		state.CouncilCost += result.Cost
+		state.TotalCost += result.Cost
+		state.CouncilInvocations++
+
+		// Log the council decision (not the original conflicting decision)
+		_ = e.council.LogDecision(&council.Decision{
+			Timestamp:      time.Now(),
+			Iteration:      state.TotalIterations,
+			Decision:       result.Resolution,
+			Rationale:      result.Rationale,
+			Preset:         e.config.Principles.Preset,
+			CouncilInvoked: true,
+		})
+		return
+	}
+
+	// No conflict - extract and log any decisions from normal output
+	decision, rationale := e.council.ExtractDecisionFromOutput(output)
+	if decision != "" || rationale != "" {
+		_ = e.council.LogDecision(&council.Decision{
+			Timestamp:      time.Now(),
+			Iteration:      state.TotalIterations,
+			Decision:       decision,
+			Rationale:      rationale,
+			Preset:         e.config.Principles.Preset,
+			CouncilInvoked: false,
+		})
+	}
 }
