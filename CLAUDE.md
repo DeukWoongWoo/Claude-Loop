@@ -81,7 +81,28 @@ docs/
   CLI_CONTRACT.md           # CLI interface contract
   FEATURE_MATRIX.md         # Bash → Go migration tracking
   PRINCIPLES_SCHEMA.md      # principles.yaml schema
-test/golden/                # Output snapshots for regression
+test/
+  mocks/
+    shared_mocks.go         # ConfigurableClaudeClient, SequentialClaudeClient
+    mock_command_executor.go # CommandSequence for CLI command mocking
+  testutil/
+    helpers.go              # Test helper functions (GetFixturePath, WriteFile)
+    git_repo.go             # Git repo setup/teardown helpers
+  fixtures/
+    principles/             # Test fixtures for config loading
+      valid.yaml            # Valid principles file
+      invalid_syntax.yaml   # YAML syntax error fixture
+      invalid_schema.yaml   # Schema validation failure fixture
+  integration/
+    cli_integration_test.go       # CLI flag parsing integration tests
+    executor_integration_test.go  # Executor + Reviewer integration tests
+    workflow_integration_test.go  # GitHub workflow integration tests
+    config_integration_test.go    # Config loading integration tests
+  e2e/
+    e2e_test.go             # E2E tests (binary build + execution)
+  golden/                   # Output snapshots for regression
+    help.txt
+    version.txt
 ```
 
 ## Commands
@@ -89,7 +110,11 @@ test/golden/                # Output snapshots for regression
 | Command | Description |
 |---------|-------------|
 | `make build` | Build binary to `bin/claude-loop` |
-| `make test` | Run all tests |
+| `make test` | Run unit tests |
+| `make test-integration` | Run integration tests |
+| `make test-e2e` | Run E2E tests (builds binary first) |
+| `make test-all` | Run all tests (unit, integration, E2E, golden) |
+| `make test-coverage` | Run tests with coverage report |
 | `make lint` | Run golangci-lint |
 | `make golden-test` | Compare output with golden files |
 | `make clean` | Remove build artifacts |
@@ -107,3 +132,11 @@ test/golden/                # Output snapshots for regression
 - [CLI Contract](docs/CLI_CONTRACT.md) - 28 flags, exit codes, validation rules
 - [Feature Matrix](docs/FEATURE_MATRIX.md) - Migration progress tracking
 - [Golden Tests](test/golden/) - help.txt, version.txt snapshots
+
+## Testing Strategy
+
+- **Unit tests**: `internal/**/*_test.go` - 95%+ coverage per package
+- **Integration tests**: `test/integration/` - Cross-package interaction tests
+- **E2E tests**: `test/e2e/` - Full binary execution tests
+- **Golden tests**: `test/golden/` - Output snapshot regression tests
+- **Mocks**: Custom mock implementations in `test/mocks/` (not testify/mock)

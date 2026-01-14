@@ -12,7 +12,7 @@ LDFLAGS := -X $(MODULE)/internal/version.Version=$(VERSION) \
 BINARY := claude-loop
 BIN_DIR := bin
 
-.PHONY: all build test lint clean install help
+.PHONY: all build test test-integration test-e2e test-all lint clean install help
 
 all: build
 
@@ -22,10 +22,24 @@ build:
 	@mkdir -p $(BIN_DIR)
 	go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(BINARY) ./cmd/claude-loop
 
-## test: Run tests
+## test: Run unit tests
 test:
-	@echo "Running tests..."
-	go test -v ./...
+	@echo "Running unit tests..."
+	go test -v ./internal/...
+
+## test-integration: Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	go test -v ./test/integration/...
+
+## test-e2e: Run E2E tests
+test-e2e: build
+	@echo "Running E2E tests..."
+	go test -v ./test/e2e/...
+
+## test-all: Run all tests (unit, integration, E2E, golden)
+test-all: test test-integration test-e2e golden-test
+	@echo "All tests passed!"
 
 ## test-coverage: Run tests with coverage
 test-coverage:
