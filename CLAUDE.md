@@ -89,6 +89,12 @@ docs/
   CLI_CONTRACT.md           # CLI interface contract
   FEATURE_MATRIX.md         # Bash → Go migration tracking
   PRINCIPLES_SCHEMA.md      # principles.yaml schema
+.github/
+  workflows/
+    ci.yml                  # CI workflow (test, lint, build)
+    release.yml             # Release workflow (goreleaser)
+.goreleaser.yaml            # Multi-platform release configuration
+install.sh                  # Binary installer script
 test/
   mocks/
     shared_mocks.go         # ConfigurableClaudeClient, SequentialClaudeClient

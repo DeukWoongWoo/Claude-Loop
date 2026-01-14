@@ -151,8 +151,10 @@
 
 | Feature | Bash Function | Lines | Go Package | Status |
 |---------|---------------|-------|------------|--------|
-| goreleaser | N/A | N/A | .goreleaser.yml | - |
-| Install script | N/A | N/A | install.sh | - |
+| goreleaser | N/A | N/A | .goreleaser.yaml | T |
+| CI workflow | N/A | N/A | .github/workflows/ci.yml | T |
+| Release workflow | N/A | N/A | .github/workflows/release.yml | T |
+| Install script | N/A | N/A | install.sh | T |
 
 ### Testing (DOU-150)
 
@@ -199,5 +201,5 @@
 | Phase 1 | 8 | 0 | 0% |
 | Phase 2 | 9 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
-| Phase 4 | 16 | 0 | 0% |
-| **Total** | **46** | **2** | **4%** |
+| Phase 4 | 18 | 4 | 22% |
+| **Total** | **48** | **6** | **13%** |
