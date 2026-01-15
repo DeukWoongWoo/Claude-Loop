@@ -289,3 +289,35 @@ func TestResetFlags(t *testing.T) {
 	assert.False(t, globalFlags.DryRun)
 	assert.Equal(t, "squash", globalFlags.MergeStrategy)
 }
+
+func TestConfigToLoopConfig(t *testing.T) {
+	flags := &Flags{
+		Prompt:              "test prompt",
+		MaxRuns:             10,
+		MaxCost:             5.50,
+		MaxDuration:         2 * time.Hour,
+		CompletionSignal:    "DONE",
+		CompletionThreshold: 5,
+		DryRun:              true,
+		NotesFile:           "NOTES.md",
+		ReviewPrompt:        "run tests",
+		LogDecisions:        true,
+	}
+
+	cfg := ConfigToLoopConfig(flags)
+
+	assert.Equal(t, "test prompt", cfg.Prompt)
+	assert.Equal(t, 10, cfg.MaxRuns)
+	assert.Equal(t, 5.50, cfg.MaxCost)
+	assert.Equal(t, 2*time.Hour, cfg.MaxDuration)
+	assert.Equal(t, "DONE", cfg.CompletionSignal)
+	assert.Equal(t, 5, cfg.CompletionThreshold)
+	assert.Equal(t, 3, cfg.MaxConsecutiveErrors) // hardcoded default
+	assert.True(t, cfg.DryRun)
+	assert.Equal(t, "NOTES.md", cfg.NotesFile)
+	assert.Equal(t, "run tests", cfg.ReviewPrompt)
+	assert.True(t, cfg.LogDecisions)
+	// Principles and NeedsPrincipleCollection should be nil/false (set separately)
+	assert.Nil(t, cfg.Principles)
+	assert.False(t, cfg.NeedsPrincipleCollection)
+}
