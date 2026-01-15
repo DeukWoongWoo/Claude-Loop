@@ -4,79 +4,198 @@
 
 Based on [continuous-claude](https://github.com/AnandChowdhary/continuous-claude) by Anand Chowdhary.
 
-## What's New
+## Table of Contents
 
-This project extends the original continuous-claude with:
+- [Features](#features)
+- [Installation](#installation)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [CLI Reference](#cli-reference)
+- [Principles Framework](#principles-framework)
+- [LLM Council](#llm-council)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+## Features
 
 - **4-Layer Principles Framework** - 18 configurable principles for autonomous decision-making
-- **LLM Council Integration** - Multi-LLM conflict resolution (Claude, Gemini, Codex)
+- **LLM Council Integration** - AI-powered conflict resolution for principle conflicts
 - **Decision Logging** - Track AI decisions with rationale
 - **3 Presets** - startup, enterprise, opensource configurations
 - **Auto-setup** - Automatic council file installation
+- **Parallel Execution** - Git worktree support for concurrent tasks
+- **CI Integration** - Automatic PR creation, CI monitoring, and failure retry
 
-## How it Works
+## Installation
 
-Using Claude Code to drive iterative development, this script fully automates the PR lifecycle from code changes through to merged commits:
-
-- Claude Code runs in a loop based on your prompt
-- All changes are committed to a new branch
-- A new pull request is created
-- It waits for all required PR checks and code reviews to complete
-- Once checks pass and reviews are approved, the PR is merged
-- This process repeats until your task is complete
-- A `SHARED_TASK_NOTES.md` file maintains continuity by passing context between iterations
-- **NEW**: On first run, configure project principles through a 3-step questionnaire
-- **NEW**: Claude uses these principles for autonomous decision-making during iterations
-
-## Quick Start
-
-### Installation
+### Quick Install (Recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DeukWoongWoo/claude-loop/main/install.sh | bash
 ```
 
 This will:
-- Install `claude-loop` to `~/.local/bin`
-- Check for required dependencies
-- Guide you through adding it to your PATH if needed
+- Detect your platform (macOS, Linux, Windows via WSL/Git Bash)
+- Download the appropriate binary
+- Verify SHA256 checksum
+- Install to `~/.local/bin`
+- Guide you through PATH configuration
+
+> **Note**: Windows users need WSL, Git Bash, or MSYS2 to run the install script.
+
+### Go Install
+
+```bash
+go install github.com/DeukWoongWoo/claude-loop/cmd/claude-loop@latest
+```
 
 ### Manual Installation
 
+Download the latest release from [GitHub Releases](https://github.com/DeukWoongWoo/claude-loop/releases):
+
 ```bash
-# Download the script
-curl -fsSL https://raw.githubusercontent.com/DeukWoongWoo/claude-loop/main/claude_loop.sh -o claude-loop
+# macOS (Apple Silicon)
+curl -fsSL https://github.com/DeukWoongWoo/claude-loop/releases/latest/download/claude-loop_darwin_arm64.tar.gz | tar xz
+sudo mv claude-loop /usr/local/bin/
 
-# Make it executable
-chmod +x claude-loop
+# macOS (Intel)
+curl -fsSL https://github.com/DeukWoongWoo/claude-loop/releases/latest/download/claude-loop_darwin_amd64.tar.gz | tar xz
+sudo mv claude-loop /usr/local/bin/
 
-# Move to a directory in your PATH
+# Linux (x86_64)
+curl -fsSL https://github.com/DeukWoongWoo/claude-loop/releases/latest/download/claude-loop_linux_amd64.tar.gz | tar xz
+sudo mv claude-loop /usr/local/bin/
+
+# Linux (ARM64)
+curl -fsSL https://github.com/DeukWoongWoo/claude-loop/releases/latest/download/claude-loop_linux_arm64.tar.gz | tar xz
 sudo mv claude-loop /usr/local/bin/
 ```
 
-### Prerequisites
+### Build from Source
+
+```bash
+git clone https://github.com/DeukWoongWoo/claude-loop.git
+cd claude-loop
+make build
+# Binary will be at ./bin/claude-loop
+```
+
+## Prerequisites
 
 Before using `claude-loop`, you need:
 
-1. **[Claude Code CLI](https://claude.ai/code)** - Authenticate with `claude auth`
-2. **[GitHub CLI](https://cli.github.com)** - Authenticate with `gh auth login`
-3. **jq** - Install with `brew install jq` (macOS) or `apt-get install jq` (Linux)
+| Tool | Purpose | Installation |
+|------|---------|--------------|
+| [Claude Code CLI](https://claude.ai/code) | AI code generation | `claude auth` to authenticate |
+| [GitHub CLI](https://cli.github.com) | PR and CI management | `gh auth login` to authenticate |
+| Git | Version control | Pre-installed on most systems |
 
-### Usage
+## Quick Start
+
+### How It Works
+
+This tool automates the PR lifecycle using Claude Code for iterative development:
+
+1. Run Claude Code in a loop based on your prompt
+2. Commit changes to a new branch and create a PR
+3. Wait for CI checks and code reviews to pass
+4. Merge the PR and repeat until complete
+5. Maintain context via `SHARED_TASK_NOTES.md` between iterations
+6. Configure project principles on first run via questionnaire
+
+### Basic Usage
 
 ```bash
-# Run with your prompt, max runs, and GitHub repo (owner and repo auto-detected from git remote)
+# Run with iteration limit
 claude-loop --prompt "add unit tests until all code is covered" --max-runs 5
 
-# Or explicitly specify the owner and repo
-claude-loop --prompt "add unit tests until all code is covered" --max-runs 5 --owner MyUser --repo my-project
+# Run with cost budget
+claude-loop --prompt "add unit tests" --max-cost 10.00
 
-# Or run with a cost budget instead
-claude-loop --prompt "add unit tests until all code is covered" --max-cost 10.00
+# Run for a specific duration (time-boxed)
+claude-loop --prompt "add documentation" --max-duration 2h
 
-# Or run for a specific duration (time-boxed bursts)
-claude-loop --prompt "add unit tests until all code is covered" --max-duration 2h
+# Combine limits (stops when first limit is reached)
+claude-loop --prompt "improve tests" --max-duration 1h --max-cost 5.00
 ```
+
+## CLI Reference
+
+### Required Options
+
+At least one limit is required:
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--prompt` | `-p` | string | The prompt/goal for Claude Code |
+| `--max-runs` | `-m` | int | Maximum iterations (0 = unlimited with cost/duration) |
+| `--max-cost` | | float | Maximum cost in USD |
+| `--max-duration` | | duration | Maximum duration (e.g., `2h`, `30m`, `1h30m`) |
+
+### GitHub Configuration
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--owner` | string | auto-detect | GitHub repository owner |
+| `--repo` | string | auto-detect | GitHub repository name |
+
+### Commit & Branch Management
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--disable-commits` | bool | false | Disable automatic commits and PR creation |
+| `--disable-branches` | bool | false | Commit on current branch without PRs |
+| `--git-branch-prefix` | string | `claude-loop/` | Branch prefix for iterations |
+| `--merge-strategy` | string | `squash` | PR merge strategy: squash, merge, rebase |
+
+### Iteration Control
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--completion-signal` | string | `CONTINUOUS_CLAUDE_PROJECT_COMPLETE` | Phrase for project completion |
+| `--completion-threshold` | int | 3 | Consecutive signals to stop early |
+| `--dry-run` | bool | false | Simulate execution without changes |
+
+### Review & CI
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--review-prompt` | `-r` | string | | Reviewer pass after each iteration |
+| `--disable-ci-retry` | | bool | false | Disable automatic CI failure retry |
+| `--ci-retry-max` | | int | 1 | Maximum CI fix attempts per PR |
+
+### Shared State
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--notes-file` | string | `SHARED_TASK_NOTES.md` | Shared notes file for context |
+
+### Worktree Support
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--worktree` | string | | Run in a git worktree for parallel execution |
+| `--worktree-base-dir` | string | `../claude-loop-worktrees` | Base directory for worktrees |
+| `--cleanup-worktree` | bool | false | Remove worktree after completion |
+| `--list-worktrees` | bool | false | List all active worktrees and exit |
+
+### Principles Framework
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--reset-principles` | bool | false | Force re-collection of principles |
+| `--principles-file` | string | `.claude/principles.yaml` | Custom principles file path |
+| `--log-decisions` | bool | false | Enable decision logging |
+
+### Update Management
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--help` | `-h` | bool | Show help message |
+| `--version` | `-v` | bool | Show version information |
+| `--auto-update` | | bool | Auto-install updates when available |
+| `--disable-updates` | | bool | Skip all update checks |
 
 ## Principles Framework
 
@@ -116,83 +235,94 @@ Claude then uses these principles for autonomous decision-making during iteratio
 **Layer 3 - Escalation:**
 - LLM Council invocation for unresolvable conflicts
 
+See [docs/PRINCIPLES_SCHEMA.md](docs/PRINCIPLES_SCHEMA.md) for the full schema specification.
+
 ## LLM Council
 
 When Claude encounters unresolvable principle conflicts, it automatically invokes the LLM Council:
 
-- Queries Claude, Gemini, and Codex for opinions
+- Analyzes the conflict using the R10 3-step resolution protocol
 - Synthesizes a consensus recommendation
-- Logs the council decision
+- Logs the council decision with rationale
 
 Council files are auto-downloaded on first run from GitHub.
 
-## Flags
+## Configuration
 
-### Required (one of these)
+### principles.yaml
 
-- `-p, --prompt <text>`: Task prompt for Claude Code
-- `-m, --max-runs <number>`: Maximum number of successful iterations (use 0 for unlimited)
-- `--max-cost <dollars>`: Maximum cost in USD to spend
-- `--max-duration <duration>`: Maximum duration to run (e.g., `2h`, `30m`, `1h30m`)
+Location: `.claude/principles.yaml` (or custom path via `--principles-file`)
 
-### Optional
+```yaml
+version: "2.3"
+preset: startup
+created_at: "2026-01-11"
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--owner <owner>` | GitHub repository owner | auto-detected |
-| `--repo <repo>` | GitHub repository name | auto-detected |
-| `--disable-commits` | Disable automatic commits and PR creation | false |
-| `--disable-branches` | Commit on current branch without PRs | false |
-| `--git-branch-prefix <prefix>` | Branch prefix for iterations | `claude-loop/` |
-| `--merge-strategy <strategy>` | PR merge strategy: squash, merge, rebase | `squash` |
-| `--notes-file <file>` | Shared notes file | `SHARED_TASK_NOTES.md` |
-| `--worktree <name>` | Run in a git worktree for parallel execution | - |
-| `--worktree-base-dir <path>` | Base directory for worktrees | `../claude-loop-worktrees` |
-| `--cleanup-worktree` | Remove worktree after completion | false |
-| `--list-worktrees` | List all active git worktrees and exit | - |
-| `--dry-run` | Simulate execution without making changes | false |
-| `--completion-signal <phrase>` | Phrase for project completion | `CONTINUOUS_CLAUDE_PROJECT_COMPLETE` |
-| `--completion-threshold <num>` | Consecutive signals to stop early | 3 |
-| `-r, --review-prompt <text>` | Reviewer pass after each iteration | - |
-| `--disable-ci-retry` | Disable automatic CI failure retry | false |
-| `--ci-retry-max <number>` | Maximum CI fix attempts per PR | 1 |
+layer0:
+  trust_architecture: 3
+  curation_model: 2
+  scope_philosophy: 4
+  # ... (1-10 scale for each principle)
 
-### Principles Framework Flags
+layer1:
+  speed_correctness: 7
+  innovation_stability: 6
+  blast_radius: 8
+  # ... (1-10 scale for each principle)
+```
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--reset-principles` | Force re-collection of principles | false |
-| `--principles-file <path>` | Custom principles file path | `.claude/principles.yaml` |
-| `--log-decisions` | Enable decision logging | false |
+See [docs/PRINCIPLES_SCHEMA.md](docs/PRINCIPLES_SCHEMA.md) for the full schema.
+
+### Decision Log
+
+Location: `.claude/principles-decisions.log` (when `--log-decisions` enabled)
+
+Format:
+```
+[2026-01-11T10:30:00Z] DECISION: feature_scope
+  Conflict: scope_philosophy (4) vs cost_efficiency (6)
+  Resolution: R3 - Prioritize cost efficiency for non-critical features
+  Rationale: MVP phase, limited budget
+```
 
 ## Examples
 
+### Branch and Merge Control
+
 ```bash
-# Run 5 iterations to fix bugs
-claude-loop -p "Fix all linter errors" -m 5
-
-# Run with cost limit
-claude-loop -p "Add tests" --max-cost 10.00
-
-# Run for 2 hours (time-boxed)
-claude-loop -p "Add documentation" --max-duration 2h
-
-# Combine duration and cost limits
-claude-loop -p "Improve tests" --max-duration 1h --max-cost 5.00
-
-# Test without commits
-claude-loop -p "Refactor code" -m 3 --disable-commits
-
 # Use custom branch prefix and merge strategy
 claude-loop -p "Feature work" -m 10 --git-branch-prefix "ai/" --merge-strategy merge
 
-# Run in parallel with worktrees
-claude-loop -p "Add unit tests" -m 5 --worktree task-a
-claude-loop -p "Add docs" -m 5 --worktree task-b
+# Commit on current branch without PRs
+claude-loop -p "Quick fix" -m 3 --disable-branches
+```
 
+### Parallel Execution with Worktrees
+
+```bash
+# Terminal 1
+claude-loop -p "Add unit tests" -m 5 --worktree tests
+
+# Terminal 2 (simultaneously)
+claude-loop -p "Add docs" -m 5 --worktree docs
+
+# List all active worktrees
+claude-loop --list-worktrees
+
+# Cleanup worktree after completion
+claude-loop -p "Task" -m 5 --worktree temp --cleanup-worktree
+```
+
+### Reviewer Pass
+
+```bash
 # Use a reviewer to validate changes
 claude-loop -p "Add new feature" -m 5 -r "Run npm test and npm run lint, fix any failures"
+```
 
+### Principles Framework
+
+```bash
 # Force re-collection of principles
 claude-loop -p "New project" -m 5 --reset-principles
 
@@ -203,16 +333,66 @@ claude-loop -p "Feature work" -m 5 --principles-file custom-principles.yaml
 claude-loop -p "Complex task" -m 10 --log-decisions
 ```
 
-### Running in Parallel
+## Troubleshooting
 
-Use git worktrees to run multiple instances simultaneously:
+### Common Issues
+
+#### "Claude CLI not found"
 
 ```bash
-# Terminal 1
-claude-loop -p "Add unit tests" -m 5 --worktree tests
+# Install Claude Code CLI
+# Visit: https://claude.ai/code
+# Then authenticate:
+claude auth
+```
 
-# Terminal 2 (simultaneously)
-claude-loop -p "Add docs" -m 5 --worktree docs
+#### "GitHub CLI not authenticated"
+
+```bash
+# Authenticate with GitHub
+gh auth login
+```
+
+#### "Repository not detected"
+
+```bash
+# Make sure you're in a git repository with a remote
+git remote -v
+
+# Or specify explicitly
+claude-loop -p "task" -m 5 --owner MyUser --repo my-project
+```
+
+#### "PATH not configured"
+
+After installation, add to your shell profile:
+
+```bash
+# For zsh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+
+# For bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+### Exit Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success |
+| 1 | Error (invalid args, runtime error, CI failure) |
+
+### Getting Help
+
+```bash
+# Show help
+claude-loop --help
+
+# Show version
+claude-loop --version
+
+# Check for updates
+claude-loop update
 ```
 
 ## Example Output

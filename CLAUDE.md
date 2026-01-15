@@ -10,6 +10,17 @@ Autonomous AI development loop CLI - Go migration from bash (2600+ lines).
 - yaml.v3 (YAML parsing)
 - testify v1.9.0 (testing)
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README.md](README.md) | User guide, installation, CLI reference |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor guidelines, dev setup |
+| [docs/CLI_CONTRACT.md](docs/CLI_CONTRACT.md) | CLI interface contract (28 flags) |
+| [docs/PRINCIPLES_SCHEMA.md](docs/PRINCIPLES_SCHEMA.md) | principles.yaml schema |
+| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) | Bash → Go migration tracking |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | Bash to Go migration guide |
+
 ## Project Structure
 
 ```
@@ -89,12 +100,14 @@ docs/
   CLI_CONTRACT.md           # CLI interface contract
   FEATURE_MATRIX.md         # Bash → Go migration tracking
   PRINCIPLES_SCHEMA.md      # principles.yaml schema
+  MIGRATION.md              # Bash to Go migration guide
 .github/
   workflows/
     ci.yml                  # CI workflow (test, lint, build)
     release.yml             # Release workflow (goreleaser)
 .goreleaser.yaml            # Multi-platform release configuration
 install.sh                  # Binary installer script
+CONTRIBUTING.md             # Contributor guidelines
 test/
   mocks/
     shared_mocks.go         # ConfigurableClaudeClient, SequentialClaudeClient
@@ -141,12 +154,6 @@ test/
 - Error handling: return errors, log at top level
 - No `panic` in library code
 - Tests in same package with `_test.go` suffix
-
-## Key Files
-
-- [CLI Contract](docs/CLI_CONTRACT.md) - 28 flags, exit codes, validation rules
-- [Feature Matrix](docs/FEATURE_MATRIX.md) - Migration progress tracking
-- [Golden Tests](test/golden/) - help.txt, version.txt snapshots
 
 ## Testing Strategy
 

@@ -146,8 +146,9 @@ Supported formats for `--max-duration`:
 |------|---------|----------|
 | `claude` | Claude Code CLI | Yes |
 | `gh` | GitHub CLI | Yes (unless --disable-commits) |
-| `jq` | JSON parsing | Yes |
 | `git` | Version control | Yes (unless --disable-commits) |
+
+> **Note**: The Go version has native JSON parsing and does not require `jq`.
 
 ---
 
