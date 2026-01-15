@@ -1,7 +1,6 @@
 # Claude Loop CLI Contract v0.18.0
 
-> This document defines the CLI interface contract for `claude_loop.sh`.
-> Go migration must maintain 100% compatibility with this contract.
+> This document defines the CLI interface contract for `claude-loop`.
 
 ## Usage
 

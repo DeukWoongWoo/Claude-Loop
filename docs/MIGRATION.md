@@ -152,21 +152,11 @@ claude-loop --version
 claude-loop --prompt "test" --max-runs 1 --dry-run
 ```
 
-### 5. Remove Bash Backup (if everything works)
+### 5. Verify Installation
 
 ```bash
-rm ~/claude-loop-bash-backup
-```
-
-## Rollback
-
-If you need to rollback to the bash version:
-
-```bash
-# Download the bash script
-curl -fsSL https://raw.githubusercontent.com/DeukWoongWoo/claude-loop/main/claude_loop.sh -o claude-loop
-chmod +x claude-loop
-sudo mv claude-loop /usr/local/bin/
+claude-loop --version
+claude-loop --help
 ```
 
 ## Feature Matrix
