@@ -108,7 +108,7 @@ func TestConfig_FlagsToLoopConfig_Integration(t *testing.T) {
 			DryRun:              true,
 		}
 
-		loopConfig := loop.ConfigFromFlags(flags)
+		loopConfig := cli.ConfigToLoopConfig(flags)
 
 		assert.Equal(t, "test prompt", loopConfig.Prompt)
 		assert.Equal(t, 10, loopConfig.MaxRuns)
@@ -127,7 +127,7 @@ func TestConfig_FlagsToLoopConfig_Integration(t *testing.T) {
 			MaxRuns: 5,
 		}
 
-		loopConfig := loop.ConfigFromFlags(flags)
+		loopConfig := cli.ConfigToLoopConfig(flags)
 
 		assert.Equal(t, 3, loopConfig.MaxConsecutiveErrors) // Default
 	})
