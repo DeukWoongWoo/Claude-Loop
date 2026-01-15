@@ -1,6 +1,6 @@
 # Claude Loop
 
-Autonomous AI development loop CLI - Go migration from bash (2600+ lines).
+Autonomous AI development loop CLI written in Go.
 
 ## Tech Stack
 
@@ -18,8 +18,7 @@ Autonomous AI development loop CLI - Go migration from bash (2600+ lines).
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor guidelines, dev setup |
 | [docs/CLI_CONTRACT.md](docs/CLI_CONTRACT.md) | CLI interface contract (28 flags) |
 | [docs/PRINCIPLES_SCHEMA.md](docs/PRINCIPLES_SCHEMA.md) | principles.yaml schema |
-| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) | Bash → Go migration tracking |
-| [docs/MIGRATION.md](docs/MIGRATION.md) | Bash to Go migration guide |
+| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) | Implementation status tracking |
 
 ## Project Structure
 
@@ -98,9 +97,8 @@ internal/
     *_test.go               # Unit tests (71% coverage)
 docs/
   CLI_CONTRACT.md           # CLI interface contract
-  FEATURE_MATRIX.md         # Bash → Go migration tracking
+  FEATURE_MATRIX.md         # Implementation status tracking
   PRINCIPLES_SCHEMA.md      # principles.yaml schema
-  MIGRATION.md              # Bash to Go migration guide
 .github/
   workflows/
     ci.yml                  # CI workflow (test, lint, build)

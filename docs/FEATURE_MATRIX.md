@@ -1,205 +1,176 @@
-# Claude Loop Feature Matrix
+# Claude Loop Implementation Status
 
-> Mapping from bash functions to Go packages for migration tracking.
+> Implementation status tracking for claude-loop CLI.
 
 ## Legend
 
 | Status | Meaning |
 |--------|---------|
 | - | Not started |
-| P | Planned |
-| W | In Progress |
-| D | Done |
-| T | Tested |
+| D | Implemented (package complete, unit tests pass) |
+| I | Integrated (connected to CLI entrypoint) |
+| T | Tested (E2E tests pass) |
 
 ---
 
-## Phase 0: Preparation
+## Phase 1: Foundation
 
-| Feature | Bash Function | Lines | Go Package | Status | Notes |
-|---------|---------------|-------|------------|--------|-------|
-| CLI Contract | N/A | N/A | docs/ | D | This document |
-| Golden Tests | N/A | N/A | test/golden/ | D | help.txt, version.txt |
+### Project Structure
 
----
+| Component | Go Location | Status |
+|-----------|-------------|--------|
+| Entry point | cmd/claude-loop/main.go | D |
+| Go module | go.mod | D |
+| Build config | Makefile | D |
+| CI workflow | .github/workflows/ci.yml | T |
+| Release workflow | .github/workflows/release.yml | T |
 
-## Phase 1: Foundation (DOU-137, DOU-138, DOU-139)
+### CLI Parsing
 
-### Project Structure (DOU-137)
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Argument parsing | internal/cli | D |
+| Argument validation | internal/cli | D |
+| Help display | internal/cli | I |
+| Version display | internal/cli | I |
 
-| Component | Description | Go Location | Status |
-|-----------|-------------|-------------|--------|
-| Entry point | Main function | cmd/claude-loop/main.go | - |
-| Go module | Module init | go.mod | - |
-| Build config | Makefile | Makefile | - |
-| CI workflow | GitHub Actions | .github/workflows/ | - |
+### Configuration
 
-### CLI Parsing (DOU-138)
-
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Argument parsing | `parse_arguments()` | 687-809 | internal/cli | - |
-| Update flags | `parse_update_flags()` | 811-832 | internal/cli | - |
-| Argument validation | `validate_arguments()` | 834-921 | internal/cli | - |
-| Help display | `show_help()` | 265-384 | internal/cli | - |
-| Version display | `show_version()` | 386-388 | internal/cli | - |
-
-### Configuration (DOU-139)
-
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Principles loading | `load_principles()` | 1139-1158 | internal/config | - |
-| Principles validation | `ensure_principles()` | 1245-1262 | internal/config | - |
-| YAML parsing | N/A (jq) | N/A | internal/config | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Principles loading | internal/config | D |
+| Principles validation | internal/config | D |
+| YAML parsing | internal/config | D |
+| Preset defaults | internal/config | D |
 
 ---
 
-## Phase 2: Core Loop (DOU-140, DOU-141, DOU-142)
+## Phase 2: Core Loop
 
-### Main Loop (DOU-140)
+### Main Loop
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Main loop | `main_loop()` | 2476-2528 | internal/loop | - |
-| Single iteration | `execute_single_iteration()` | 2355-2474 | internal/loop | - |
-| Completion summary | `show_completion_summary()` | 2530-2554 | internal/loop | - |
-| Entry point | `main()` | 2555-2599 | cmd/claude-loop | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Main loop executor | internal/loop | D |
+| Single iteration | internal/loop | D |
+| Limit checker (cost/time/runs) | internal/loop | D |
+| Completion detector | internal/loop | D |
+| Error handling | internal/loop | D |
 
-### Claude Integration (DOU-141)
+### Claude Integration
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Claude execution | `run_claude_iteration()` | 1915-2008 | internal/claude | - |
-| Result parsing | `parse_claude_result()` | 2191-2208 | internal/claude | - |
-| Stream-JSON parsing | N/A (jq pipe) | N/A | internal/claude | - |
-| Cost extraction | N/A (jq) | N/A | internal/claude | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Claude subprocess wrapper | internal/claude | D |
+| JSON stream parser | internal/claude | D |
+| Cost extraction | internal/claude | D |
 
-### Prompt Builder (DOU-142)
+### Prompt Builder
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Workflow context | `PROMPT_WORKFLOW_CONTEXT` | 15-23 | internal/prompt | - |
-| Commit message | `PROMPT_COMMIT_MESSAGE` | 13 | internal/prompt | - |
-| Notes update | `PROMPT_NOTES_*` | 25-40 | internal/prompt | - |
-| Reviewer context | `PROMPT_REVIEWER_CONTEXT` | 42-45 | internal/prompt | - |
-| CI fix context | `PROMPT_CI_FIX_CONTEXT` | 46-64 | internal/prompt | - |
-| Principle collection | `PROMPT_PRINCIPLE_COLLECTION` | 66+ | internal/prompt | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Workflow context | internal/prompt | D |
+| Notes file loader | internal/prompt | D |
+| CI fix prompts | internal/prompt | D |
+| Principle prompts | internal/prompt | D |
 
 ---
 
-## Phase 3: Git/GitHub (DOU-143, DOU-144, DOU-145)
+## Phase 3: Git/GitHub
 
-### Git Operations (DOU-143)
+### Git Operations
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Branch creation | `create_iteration_branch()` | 1546-1594 | internal/git | - |
-| Worktree list | `list_worktrees()` | 1777-1792 | internal/git | - |
-| Worktree setup | `setup_worktree()` | 1794-1858 | internal/git | - |
-| Worktree cleanup | `cleanup_worktree()` | 1860-1901 | internal/git | - |
-| Iteration display | `get_iteration_display()` | 1902-1914 | internal/git | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Branch creation | internal/git | D |
+| Commit operations | internal/git | D |
+| Worktree management | internal/git | D |
 
-### GitHub PR Workflow (DOU-144)
+### GitHub PR Workflow
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| PR workflow | `continuous_claude_commit()` | 1595-1729 | internal/github | - |
-| Current branch commit | `commit_on_current_branch()` | 1731-1775 | internal/github | - |
-| PR checks wait | `wait_for_pr_checks()` | 1263-1456 | internal/github | - |
-| PR merge | `merge_pr_and_cleanup()` | 1483-1544 | internal/github | - |
-| Failed run ID | `get_failed_run_id()` | 1458-1481 | internal/github | - |
-| Repo detection | `detect_github_repo()` | 642-685 | internal/github | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Repository detection | internal/github | D |
+| PR creation/management | internal/github | D |
+| CI status monitoring | internal/github | D |
+| PR merge | internal/github | D |
 
-### CI Auto-Fix (DOU-145)
+### CI Auto-Fix
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| CI fix iteration | `run_ci_fix_iteration()` | 2052-2151 | internal/github | - |
-| CI fix recheck | `attempt_ci_fix_and_recheck()` | 2154-2189 | internal/github | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| CI failure analysis | internal/github | D |
+| Auto-fix orchestration | internal/github | D |
 
 ---
 
-## Phase 4: Advanced Features (DOU-146 ~ DOU-151)
+## Phase 4: Advanced Features
 
-### Auto Update (DOU-146)
+### Auto Update
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Version check | `get_latest_version()` | 390-404 | internal/update | - |
-| Version compare | `compare_versions()` | 406-462 | internal/update | - |
-| Script path | `get_script_path()` | 463-469 | internal/update | - |
-| Download update | `download_and_install_update()` | 470-527 | internal/update | - |
-| Update check | `check_for_updates()` | 528-585 | internal/update | - |
-| Update command | `handle_update_command()` | 586-641 | internal/update | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Version check | internal/update | I |
+| Version compare | internal/update | I |
+| Binary download | internal/update | I |
+| Update command | internal/update | I |
 
-### Reviewer Pass (DOU-147)
+### Reviewer Pass
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Reviewer iteration | `run_reviewer_iteration()` | 2010-2051 | internal/reviewer | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Reviewer execution | internal/reviewer | D |
+| Reviewer prompt builder | internal/reviewer | D |
 
-### LLM Council (DOU-148)
+### LLM Council
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Decision logging | `log_principle_decision()` | 1160-1198 | internal/council | - |
-| Conflict detection | `detect_principle_conflict()` | 1200-1208 | internal/council | - |
-| Council invocation | `invoke_llm_council()` | 1210-1243 | internal/council | - |
-| Council setup | `ensure_council_setup()` | 952-995 | internal/council | - |
+| Feature | Go Package | Status |
+|---------|------------|--------|
+| Conflict detection | internal/council | D |
+| Council invocation | internal/council | D |
+| Decision logging | internal/council | D |
 
-### Release Automation (DOU-149)
+### Release Automation
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| goreleaser | N/A | N/A | .goreleaser.yaml | T |
-| CI workflow | N/A | N/A | .github/workflows/ci.yml | T |
-| Release workflow | N/A | N/A | .github/workflows/release.yml | T |
-| Install script | N/A | N/A | install.sh | T |
+| Feature | Location | Status |
+|---------|----------|--------|
+| goreleaser config | .goreleaser.yaml | T |
+| CI workflow | .github/workflows/ci.yml | T |
+| Release workflow | .github/workflows/release.yml | T |
+| Install script | install.sh | T |
 
-### Testing (DOU-150)
+### Testing Infrastructure
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Integration tests | N/A | N/A | test/integration/ | - |
-| E2E tests | N/A | N/A | test/e2e/ | - |
-| Golden tests | N/A | N/A | test/golden/ | - |
+| Feature | Location | Status |
+|---------|----------|--------|
+| Integration tests | test/integration/ | T |
+| E2E tests | test/e2e/ | T |
+| Golden tests | test/golden/ | T |
+| Mock implementations | test/mocks/ | T |
 
-### Documentation (DOU-151)
+### Documentation
 
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| README | N/A | N/A | README.md | - |
-| Migration guide | N/A | N/A | docs/MIGRATION.md | - |
-| Contributing | N/A | N/A | CONTRIBUTING.md | - |
-
----
-
-## Utility Functions
-
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Duration parsing | `parse_duration()` | 188-236 | internal/util | - |
-| Duration format | `format_duration()` | 238-263 | internal/util | - |
-| Requirements check | `validate_requirements()` | 923-951 | internal/util | - |
-
----
-
-## Error Handling
-
-| Feature | Bash Function | Lines | Go Package | Status |
-|---------|---------------|-------|------------|--------|
-| Iteration error | `handle_iteration_error()` | 2210-2254 | internal/loop | - |
-| Iteration success | `handle_iteration_success()` | 2256-2353 | internal/loop | - |
+| Feature | Location | Status |
+|---------|----------|--------|
+| README | README.md | T |
+| CLI Contract | docs/CLI_CONTRACT.md | T |
+| Principles Schema | docs/PRINCIPLES_SCHEMA.md | T |
+| Contributing Guide | CONTRIBUTING.md | T |
 
 ---
 
 ## Summary
 
-| Phase | Total Functions | Completed | Progress |
-|-------|-----------------|-----------|----------|
-| Phase 0 | 2 | 2 | 100% |
-| Phase 1 | 8 | 0 | 0% |
-| Phase 2 | 9 | 0 | 0% |
-| Phase 3 | 11 | 0 | 0% |
-| Phase 4 | 18 | 4 | 22% |
-| **Total** | **48** | **6** | **13%** |
+| Phase | Total | D | I | T | Progress |
+|-------|-------|---|---|---|----------|
+| Phase 1 | 13 | 7 | 2 | 4 | 100% |
+| Phase 2 | 12 | 12 | 0 | 0 | 100% (D) |
+| Phase 3 | 9 | 9 | 0 | 0 | 100% (D) |
+| Phase 4 | 18 | 6 | 4 | 8 | 100% |
+| **Total** | **52** | **34** | **6** | **12** | **100% (D)** |
+
+### Key Insight
+
+All packages are implemented (D status), but most are **not integrated** with the CLI entrypoint (`internal/cli/root.go`). The main loop execution is blocked by a placeholder at `root.go:161-162`.
+
+**Next step**: Connect Executor to root.go to move from D → I → T.

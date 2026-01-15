@@ -10,6 +10,7 @@ Thank you for your interest in contributing to Claude Loop! This document provid
 - [Testing](#testing)
 - [Pull Request Process](#pull-request-process)
 - [Commit Message Format](#commit-message-format)
+- [Issue Completion Checklist](#issue-completion-checklist)
 
 ## Development Setup
 
@@ -297,6 +298,28 @@ feat(cli): add new feature
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
+
+## Issue Completion Checklist
+
+Before marking an issue as "Done", ensure all of the following are completed:
+
+- [ ] **Package implementation** - All code for the feature is written
+- [ ] **Unit tests** - 95%+ coverage for new code
+- [ ] **CLI integration** - Feature is connected to `internal/cli/root.go` if applicable
+- [ ] **E2E test** - End-to-end test verifies the feature works via CLI
+- [ ] **Documentation** - Update `docs/FEATURE_MATRIX.md` status (D → I → T)
+
+### Status Definitions
+
+| Status | Meaning | Requirements |
+|--------|---------|--------------|
+| D | Implemented | Package complete, unit tests pass |
+| I | Integrated | Connected to CLI entrypoint |
+| T | Tested | E2E tests pass |
+
+### Why This Matters
+
+Issues should only be marked "Done" when the feature is fully usable by end users, not just when the package is implemented in isolation. This prevents the "architectural disconnect" where packages are complete but the CLI remains non-functional.
 
 ## Questions?
 
