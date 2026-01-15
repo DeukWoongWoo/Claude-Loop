@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,6 +192,8 @@ func TestFlagParsing(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh command for testing (NewRootCmd resets global state)
 			cmd := NewRootCmd()
+			// Override Run to prevent actual execution - we only test flag parsing
+			cmd.Run = func(cmd *cobra.Command, args []string) {}
 			cmd.SetArgs(tt.args)
 
 			// Suppress output during tests

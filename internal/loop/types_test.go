@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DeukWoongWoo/claude-loop/internal/cli"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,29 +43,6 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, time.Duration(0), config.MaxDuration)
 	assert.False(t, config.DryRun)
 	assert.Nil(t, config.OnProgress)
-}
-
-func TestConfigFromFlags(t *testing.T) {
-	flags := &cli.Flags{
-		Prompt:              "test prompt",
-		MaxRuns:             5,
-		MaxCost:             10.0,
-		MaxDuration:         2 * time.Hour,
-		CompletionSignal:    "DONE",
-		CompletionThreshold: 2,
-		DryRun:              true,
-	}
-
-	config := ConfigFromFlags(flags)
-
-	assert.Equal(t, "test prompt", config.Prompt)
-	assert.Equal(t, 5, config.MaxRuns)
-	assert.Equal(t, 10.0, config.MaxCost)
-	assert.Equal(t, 2*time.Hour, config.MaxDuration)
-	assert.Equal(t, "DONE", config.CompletionSignal)
-	assert.Equal(t, 2, config.CompletionThreshold)
-	assert.Equal(t, 3, config.MaxConsecutiveErrors) // Always 3
-	assert.True(t, config.DryRun)
 }
 
 func TestStopReason_Values(t *testing.T) {

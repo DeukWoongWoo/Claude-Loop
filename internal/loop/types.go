@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/DeukWoongWoo/claude-loop/internal/cli"
 	"github.com/DeukWoongWoo/claude-loop/internal/config"
 )
 
@@ -93,24 +92,6 @@ func DefaultConfig() *Config {
 		CompletionSignal:     "CONTINUOUS_CLAUDE_PROJECT_COMPLETE",
 		CompletionThreshold:  3,
 		MaxConsecutiveErrors: 3,
-	}
-}
-
-// ConfigFromFlags creates a Config from CLI Flags.
-// Note: Principles and NeedsPrincipleCollection must be set separately after loading principles.
-func ConfigFromFlags(f *cli.Flags) *Config {
-	return &Config{
-		Prompt:               f.Prompt,
-		MaxRuns:              f.MaxRuns,
-		MaxCost:              f.MaxCost,
-		MaxDuration:          f.MaxDuration,
-		CompletionSignal:     f.CompletionSignal,
-		CompletionThreshold:  f.CompletionThreshold,
-		MaxConsecutiveErrors: 3,
-		DryRun:               f.DryRun,
-		NotesFile:            f.NotesFile,
-		ReviewPrompt:         f.ReviewPrompt,
-		LogDecisions:         f.LogDecisions,
 	}
 }
 

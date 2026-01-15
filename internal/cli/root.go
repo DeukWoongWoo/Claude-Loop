@@ -6,9 +6,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/DeukWoongWoo/claude-loop/internal/claude"
+	"github.com/DeukWoongWoo/claude-loop/internal/config"
+	"github.com/DeukWoongWoo/claude-loop/internal/git"
+	"github.com/DeukWoongWoo/claude-loop/internal/loop"
 	"github.com/DeukWoongWoo/claude-loop/internal/update"
 	"github.com/DeukWoongWoo/claude-loop/internal/version"
 	"github.com/spf13/cobra"
@@ -152,15 +158,7 @@ For more information, visit: https://github.com/DeukWoongWoo/claude-loop`,
 		// Validate flags
 		return globalFlags.Validate()
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		// If no arguments and no prompt provided, show help
-		if len(args) == 0 && globalFlags.Prompt == "" {
-			_ = cmd.Help()
-			return
-		}
-		// TODO: Main loop execution will be implemented in DOU-140
-		fmt.Println("Main loop execution not yet implemented")
-	},
+	Run: runMainLoop,
 }
 
 // updateCmd represents the update command
@@ -310,6 +308,142 @@ func parseDuration() error {
 	return nil
 }
 
+// ConfigToLoopConfig creates a loop.Config from CLI Flags.
+// Note: Principles and NeedsPrincipleCollection must be set separately after loading principles.
+func ConfigToLoopConfig(f *Flags) *loop.Config {
+	return &loop.Config{
+		Prompt:               f.Prompt,
+		MaxRuns:              f.MaxRuns,
+		MaxCost:              f.MaxCost,
+		MaxDuration:          f.MaxDuration,
+		CompletionSignal:     f.CompletionSignal,
+		CompletionThreshold:  f.CompletionThreshold,
+		MaxConsecutiveErrors: 3,
+		DryRun:               f.DryRun,
+		NotesFile:            f.NotesFile,
+		ReviewPrompt:         f.ReviewPrompt,
+		LogDecisions:         f.LogDecisions,
+	}
+}
+
+// handleListWorktrees handles the --list-worktrees flag.
+func handleListWorktrees() {
+	ctx := context.Background()
+	wm := git.NewWorktreeManager(nil)
+
+	worktrees, err := wm.List(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error listing worktrees: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Print(wm.FormatList(worktrees))
+}
+
+// displayLoopResult displays the final loop result.
+func displayLoopResult(result *loop.LoopResult) {
+	state := result.State
+
+	fmt.Println("\n=== Loop Complete ===")
+	fmt.Printf("Stop reason: %s\n", result.StopReason)
+	fmt.Printf("Successful iterations: %d\n", state.SuccessfulIterations)
+	fmt.Printf("Total iterations: %d\n", state.TotalIterations)
+	fmt.Printf("Total cost: $%.4f\n", state.TotalCost)
+	fmt.Printf("Duration: %s\n", state.Elapsed().Round(time.Second))
+
+	if state.ReviewerCost > 0 {
+		fmt.Printf("Reviewer cost: $%.4f\n", state.ReviewerCost)
+	}
+	if state.CouncilInvocations > 0 {
+		fmt.Printf("Council invocations: %d (cost: $%.4f)\n",
+			state.CouncilInvocations, state.CouncilCost)
+	}
+
+	if result.LastError != nil {
+		fmt.Printf("Last error: %v\n", result.LastError)
+	}
+}
+
+// runMainLoop executes the main loop. Shared by rootCmd and NewRootCmd.
+func runMainLoop(cmd *cobra.Command, args []string) {
+	// Handle --list-worktrees (standalone action)
+	if globalFlags.ListWorktrees {
+		handleListWorktrees()
+		return
+	}
+
+	// If no arguments and no prompt provided, show help
+	if len(args) == 0 && globalFlags.Prompt == "" {
+		_ = cmd.Help()
+		return
+	}
+
+	// Create cancellable context with signal handling
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle Ctrl+C gracefully
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		fmt.Fprintln(os.Stderr, "\nReceived interrupt signal, stopping...")
+		cancel()
+	}()
+
+	// Check for updates at startup
+	checkForUpdatesAtStartup(ctx, globalFlags)
+
+	// Load principles
+	var principles *config.Principles
+	var needsPrincipleCollection bool
+
+	if _, err := os.Stat(globalFlags.PrinciplesFile); os.IsNotExist(err) || globalFlags.ResetPrinciples {
+		// File doesn't exist or user wants to reset - need collection
+		needsPrincipleCollection = true
+		principles = config.DefaultPrinciples(config.PresetStartup)
+	} else {
+		// File exists - load it
+		var err error
+		principles, err = config.LoadFromFile(globalFlags.PrinciplesFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading principles: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// Create loop config from flags
+	loopConfig := ConfigToLoopConfig(globalFlags)
+	loopConfig.Principles = principles
+	loopConfig.NeedsPrincipleCollection = needsPrincipleCollection
+	loopConfig.OnProgress = func(state *loop.State) {
+		maxRunsStr := "unlimited"
+		if globalFlags.MaxRuns > 0 {
+			maxRunsStr = fmt.Sprintf("%d", globalFlags.MaxRuns)
+		}
+		fmt.Printf("[%d/%s] Cost: $%.4f | Elapsed: %s\n",
+			state.SuccessfulIterations,
+			maxRunsStr,
+			state.TotalCost,
+			state.Elapsed().Round(time.Second),
+		)
+	}
+
+	// Create Claude client
+	claudeClient := claude.NewClient(nil)
+
+	// Create and run Executor
+	executor := loop.NewExecutor(loopConfig, claudeClient)
+	result, err := executor.Run(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Loop failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Display result
+	displayLoopResult(result)
+}
+
 // NewRootCmd creates a new root command for testing.
 // This allows tests to work with a fresh command instance.
 func NewRootCmd() *cobra.Command {
@@ -322,13 +456,7 @@ func NewRootCmd() *cobra.Command {
 		Long:    rootCmd.Long,
 		Version: rootCmd.Version,
 		PreRunE: rootCmd.PreRunE,
-		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) == 0 && globalFlags.Prompt == "" {
-				_ = cmd.Help()
-				return
-			}
-			fmt.Println("Main loop execution not yet implemented")
-		},
+		Run:     runMainLoop,
 	}
 
 	configureCommand(cmd)
