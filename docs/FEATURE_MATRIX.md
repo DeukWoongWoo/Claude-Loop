@@ -19,7 +19,7 @@
 
 | Component | Go Location | Status |
 |-----------|-------------|--------|
-| Entry point | cmd/claude-loop/main.go | D |
+| Entry point | cmd/claude-loop/main.go | I |
 | Go module | go.mod | D |
 | Build config | Makefile | D |
 | CI workflow | .github/workflows/ci.yml | T |
@@ -29,8 +29,8 @@
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Argument parsing | internal/cli | D |
-| Argument validation | internal/cli | D |
+| Argument parsing | internal/cli | I |
+| Argument validation | internal/cli | I |
 | Help display | internal/cli | I |
 | Version display | internal/cli | I |
 
@@ -38,10 +38,10 @@
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Principles loading | internal/config | D |
-| Principles validation | internal/config | D |
-| YAML parsing | internal/config | D |
-| Preset defaults | internal/config | D |
+| Principles loading | internal/config | I |
+| Principles validation | internal/config | I |
+| YAML parsing | internal/config | I |
+| Preset defaults | internal/config | I |
 
 ---
 

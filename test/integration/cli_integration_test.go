@@ -222,7 +222,8 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := cli.NewRootCmd()
+			// Use NewRootCmdForFlagParsing to avoid actually running the loop
+			cmd := cli.NewRootCmdForFlagParsing()
 			cmd.SetArgs(tt.args)
 			cmd.SetOut(&bytes.Buffer{})
 			cmd.SetErr(&bytes.Buffer{})
@@ -267,7 +268,7 @@ func TestCLI_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := cli.NewRootCmd()
+			cmd := cli.NewRootCmdForFlagParsing()
 			cmd.SetArgs(tt.args)
 
 			var stderr bytes.Buffer
@@ -281,8 +282,8 @@ func TestCLI_ValidationErrors(t *testing.T) {
 }
 
 func TestCLI_DefaultValues(t *testing.T) {
-	cmd := cli.NewRootCmd()
-	cmd.SetArgs([]string{"-p", "test", "-m", "1", "--dry-run", "--disable-updates"})
+	cmd := cli.NewRootCmdForFlagParsing()
+	cmd.SetArgs([]string{"-p", "test", "-m", "1"})
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 
@@ -302,7 +303,7 @@ func TestCLI_DefaultValues(t *testing.T) {
 
 func TestCLI_HelpAndVersion(t *testing.T) {
 	t.Run("help flag shows usage", func(t *testing.T) {
-		cmd := cli.NewRootCmd()
+		cmd := cli.NewRootCmdForFlagParsing()
 		cmd.SetArgs([]string{"--help"})
 
 		var stdout bytes.Buffer
@@ -318,7 +319,7 @@ func TestCLI_HelpAndVersion(t *testing.T) {
 	})
 
 	t.Run("version flag shows version", func(t *testing.T) {
-		cmd := cli.NewRootCmd()
+		cmd := cli.NewRootCmdForFlagParsing()
 		cmd.SetArgs([]string{"--version"})
 
 		var stdout bytes.Buffer
@@ -334,6 +335,8 @@ func TestCLI_HelpAndVersion(t *testing.T) {
 
 func TestCLI_ListWorktrees_SkipsValidation(t *testing.T) {
 	// --list-worktrees should work without prompt and limits
+	// Note: This test uses NewRootCmd since it actually needs to execute
+	// the list-worktrees functionality (which exits early without running the loop)
 	cmd := cli.NewRootCmd()
 	cmd.SetArgs([]string{"--list-worktrees"})
 
@@ -360,8 +363,8 @@ func TestCLI_DurationParsing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := cli.NewRootCmd()
-			cmd.SetArgs([]string{"-p", "test", "--max-duration", tt.duration, "--dry-run", "--disable-updates"})
+			cmd := cli.NewRootCmdForFlagParsing()
+			cmd.SetArgs([]string{"-p", "test", "--max-duration", tt.duration})
 
 			err := cmd.Execute()
 			require.NoError(t, err)
@@ -373,7 +376,7 @@ func TestCLI_DurationParsing(t *testing.T) {
 }
 
 func TestCLI_InvalidDuration(t *testing.T) {
-	cmd := cli.NewRootCmd()
+	cmd := cli.NewRootCmdForFlagParsing()
 	cmd.SetArgs([]string{"-p", "test", "--max-duration", "invalid"})
 
 	err := cmd.Execute()
@@ -386,8 +389,8 @@ func TestCLI_MergeStrategyValidation(t *testing.T) {
 
 	for _, strategy := range validStrategies {
 		t.Run(strategy, func(t *testing.T) {
-			cmd := cli.NewRootCmd()
-			cmd.SetArgs([]string{"-p", "test", "-m", "1", "--merge-strategy", strategy, "--dry-run", "--disable-updates"})
+			cmd := cli.NewRootCmdForFlagParsing()
+			cmd.SetArgs([]string{"-p", "test", "-m", "1", "--merge-strategy", strategy})
 
 			err := cmd.Execute()
 			require.NoError(t, err)

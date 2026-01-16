@@ -6,7 +6,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+)
+
+var (
+	buildOnce    sync.Once
+	cachedBinary string
+	buildError   error
 )
 
 func skipIfShort(t *testing.T) {
@@ -16,22 +23,20 @@ func skipIfShort(t *testing.T) {
 	}
 }
 
-func findProjectRoot(t *testing.T) string {
-	t.Helper()
-
+func findProjectRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
+		return "", err
 	}
 
 	dir := cwd
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
+			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			t.Fatalf("could not find project root (go.mod)")
+			return "", os.ErrNotExist
 		}
 		dir = parent
 	}
@@ -40,18 +45,33 @@ func findProjectRoot(t *testing.T) string {
 func buildBinary(t *testing.T) string {
 	t.Helper()
 
-	binPath := filepath.Join(t.TempDir(), "claude-loop-test")
-	projectRoot := findProjectRoot(t)
+	buildOnce.Do(func() {
+		projectRoot, err := findProjectRoot()
+		if err != nil {
+			buildError = err
+			return
+		}
 
-	cmd := exec.Command("go", "build", "-o", binPath, "./cmd/claude-loop")
-	cmd.Dir = projectRoot
+		// Use a shared temp directory for the binary
+		tempDir := os.TempDir()
+		cachedBinary = filepath.Join(tempDir, "claude-loop-e2e-test")
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build failed: %v\noutput: %s", err, output)
+		cmd := exec.Command("go", "build", "-o", cachedBinary, "./cmd/claude-loop")
+		cmd.Dir = projectRoot
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			buildError = &exec.ExitError{Stderr: output}
+			cachedBinary = ""
+			return
+		}
+	})
+
+	if buildError != nil {
+		t.Fatalf("build failed: %v", buildError)
 	}
 
-	return binPath
+	return cachedBinary
 }
 
 func TestE2E_HelpOutput(t *testing.T) {

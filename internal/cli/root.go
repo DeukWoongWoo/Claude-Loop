@@ -465,6 +465,28 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
+// NewRootCmdForFlagParsing creates a root command that only parses flags without executing.
+// Use this for unit/integration tests that need to test flag parsing behavior
+// without actually running the main loop.
+func NewRootCmdForFlagParsing() *cobra.Command {
+	ResetFlags()
+	maxDurationStr = ""
+
+	cmd := &cobra.Command{
+		Use:     "claude-loop",
+		Short:   "Autonomous AI development loop with 4-Layer Principles Framework",
+		Long:    rootCmd.Long,
+		Version: rootCmd.Version,
+		PreRunE: rootCmd.PreRunE,
+		Run:     func(cmd *cobra.Command, args []string) {}, // No-op run to trigger PreRunE
+	}
+
+	configureCommand(cmd)
+	registerFlags(cmd)
+
+	return cmd
+}
+
 // Execute runs the root command.
 func Execute() error {
 	if err := rootCmd.Execute(); err != nil {

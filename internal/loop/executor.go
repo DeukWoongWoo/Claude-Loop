@@ -142,13 +142,13 @@ func (e *Executor) Run(ctx context.Context) (*LoopResult, error) {
 			continue
 		}
 
-		// Handle principle conflict detection and council invocation
-		if e.council != nil {
+		// Handle principle conflict detection and council invocation (skip in dry-run)
+		if e.council != nil && !e.config.DryRun {
 			e.handleCouncil(ctx, state, iterResult.Output)
 		}
 
-		// Run reviewer pass if configured
-		if e.reviewer != nil {
+		// Run reviewer pass if configured (skip in dry-run)
+		if e.reviewer != nil && !e.config.DryRun {
 			if reviewErr := e.runReviewerPass(ctx, state); reviewErr != nil {
 				return &LoopResult{
 					State:      state,
