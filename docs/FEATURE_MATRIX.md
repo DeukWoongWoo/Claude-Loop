@@ -51,28 +51,28 @@
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Main loop executor | internal/loop | D |
-| Single iteration | internal/loop | D |
-| Limit checker (cost/time/runs) | internal/loop | D |
-| Completion detector | internal/loop | D |
-| Error handling | internal/loop | D |
+| Main loop executor | internal/loop | I |
+| Single iteration | internal/loop | I |
+| Limit checker (cost/time/runs) | internal/loop | I |
+| Completion detector | internal/loop | I |
+| Error handling | internal/loop | I |
 
 ### Claude Integration
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Claude subprocess wrapper | internal/claude | D |
-| JSON stream parser | internal/claude | D |
-| Cost extraction | internal/claude | D |
+| Claude subprocess wrapper | internal/claude | I |
+| JSON stream parser | internal/claude | I |
+| Cost extraction | internal/claude | I |
 
 ### Prompt Builder
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Workflow context | internal/prompt | D |
-| Notes file loader | internal/prompt | D |
-| CI fix prompts | internal/prompt | D |
-| Principle prompts | internal/prompt | D |
+| Workflow context | internal/prompt | I |
+| Notes file loader | internal/prompt | I |
+| CI fix prompts | internal/prompt | I |
+| Principle prompts | internal/prompt | I |
 
 ---
 
@@ -119,16 +119,16 @@
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Reviewer execution | internal/reviewer | D |
-| Reviewer prompt builder | internal/reviewer | D |
+| Reviewer execution | internal/reviewer | I |
+| Reviewer prompt builder | internal/reviewer | I |
 
 ### LLM Council
 
 | Feature | Go Package | Status |
 |---------|------------|--------|
-| Conflict detection | internal/council | D |
-| Council invocation | internal/council | D |
-| Decision logging | internal/council | D |
+| Conflict detection | internal/council | I |
+| Council invocation | internal/council | I |
+| Decision logging | internal/council | I |
 
 ### Release Automation
 
@@ -159,18 +159,32 @@
 
 ---
 
+## Phase 5: CLI Integration
+
+| Feature | Go Location | Status |
+|---------|-------------|--------|
+| CLI entrypoint connection | internal/cli/root.go | I |
+| ConfigToLoopConfig | internal/cli/root.go | I |
+| Signal handling (SIGINT/SIGTERM) | internal/cli/root.go | I |
+| Result display | internal/cli/root.go | I |
+
+---
+
 ## Summary
 
 | Phase | Total | D | I | T | Progress |
 |-------|-------|---|---|---|----------|
-| Phase 1 | 13 | 7 | 2 | 4 | 100% |
-| Phase 2 | 12 | 12 | 0 | 0 | 100% (D) |
+| Phase 1 | 13 | 2 | 7 | 4 | 100% |
+| Phase 2 | 12 | 0 | 12 | 0 | 100% (I) |
 | Phase 3 | 9 | 9 | 0 | 0 | 100% (D) |
-| Phase 4 | 18 | 6 | 4 | 8 | 100% |
-| **Total** | **52** | **34** | **6** | **12** | **100% (D)** |
+| Phase 4 | 21 | 0 | 11 | 10 | 100% (I/T) |
+| Phase 5 | 4 | 0 | 4 | 0 | 100% (I) |
+| **Total** | **59** | **11** | **34** | **14** | **100%** |
 
-### Key Insight
+### Status
 
-All packages are implemented (D status), but most are **not integrated** with the CLI entrypoint (`internal/cli/root.go`). The main loop execution is blocked by a placeholder at `root.go:161-162`.
+CLI entrypoint integration complete (Phase 5). All core packages (loop, claude, prompt, reviewer, council) are now connected to `internal/cli/root.go`.
 
-**Next step**: Connect Executor to root.go to move from D → I → T.
+**Note**: Phase 3 (Git/GitHub) packages are implemented (D) but not yet integrated into the main execution flow. They will be activated when PR workflow flags are used.
+
+**Next step**: Move from I → T by adding comprehensive E2E tests for all integrated features.
