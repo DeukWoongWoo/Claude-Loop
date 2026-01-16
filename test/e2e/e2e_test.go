@@ -134,6 +134,7 @@ func TestE2E_DryRunMode(t *testing.T) {
 		"-m", "3",
 		"--dry-run",
 		"--disable-commits",
+		"--disable-updates",
 	)
 
 	var stdout, stderr bytes.Buffer
@@ -141,14 +142,18 @@ func TestE2E_DryRunMode(t *testing.T) {
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
+	combinedOutput := stdout.String() + stderr.String()
+
 	if err != nil {
-		combinedOutput := stdout.String() + stderr.String()
-		// Skip only if the main loop is not yet implemented
-		if strings.Contains(combinedOutput, "not yet implemented") {
-			t.Skip("Main loop not yet fully implemented")
-		}
-		// Fail on unexpected errors to catch regressions
-		t.Fatalf("dry run failed with unexpected error: %v\noutput: %s", err, combinedOutput)
+		t.Fatalf("dry run failed: %v\noutput: %s", err, combinedOutput)
+	}
+
+	// Verify dry-run output format
+	if !strings.Contains(combinedOutput, "Loop Complete") {
+		t.Error("expected 'Loop Complete' in output")
+	}
+	if !strings.Contains(combinedOutput, "Stop reason:") {
+		t.Error("expected 'Stop reason:' in output")
 	}
 }
 
@@ -159,16 +164,20 @@ func TestE2E_ListWorktrees(t *testing.T) {
 	output, err := exec.Command(binPath, "--list-worktrees").CombinedOutput()
 	outputStr := string(output)
 
-	// Log error for debugging but don't fail - command may fail for valid reasons
-	if err != nil {
-		t.Logf("--list-worktrees exited with error (may be expected): %v", err)
-	}
-
+	// Should not require other flags
 	if strings.Contains(outputStr, "prompt is required") {
 		t.Error("--list-worktrees should not require --prompt")
 	}
 	if strings.Contains(outputStr, "at least one limit") {
 		t.Error("--list-worktrees should not require limit flags")
+	}
+
+	// Should show worktree output (if in git repo)
+	if err == nil {
+		// Success case: should show "Active worktrees" or "No worktrees"
+		if !strings.Contains(outputStr, "worktrees") && !strings.Contains(outputStr, "Worktrees") {
+			t.Error("expected worktree output")
+		}
 	}
 }
 
@@ -176,19 +185,22 @@ func TestE2E_FlagCombinations(t *testing.T) {
 	skipIfShort(t)
 	binPath := buildBinary(t)
 
+	// Note: All tests use --dry-run --disable-updates for fast execution.
+	// Tests with --max-cost or --max-duration also need -m to prevent infinite loops
+	// (in dry-run mode, cost is always $0 and duration limits alone would still run many iterations)
 	tests := []struct {
 		name string
 		args []string
 	}{
-		{"max-runs only", []string{"-p", "test", "-m", "5"}},
-		{"max-cost only", []string{"-p", "test", "--max-cost", "10.00"}},
-		{"max-duration only", []string{"-p", "test", "--max-duration", "1h"}},
-		{"all limits combined", []string{"-p", "test", "-m", "10", "--max-cost", "5.00", "--max-duration", "30m"}},
-		{"with reviewer", []string{"-p", "test", "-m", "5", "-r", "run tests"}},
-		{"with github options", []string{"-p", "test", "-m", "5", "--owner", "org", "--repo", "repo"}},
-		{"with dry-run", []string{"-p", "test", "-m", "5", "--dry-run"}},
-		{"with disable-commits", []string{"-p", "test", "-m", "5", "--disable-commits"}},
-		{"with worktree options", []string{"-p", "test", "-m", "5", "--worktree", "test-wt", "--cleanup-worktree"}},
+		{"max-runs only", []string{"-p", "test", "-m", "5", "--dry-run", "--disable-updates"}},
+		{"max-cost only", []string{"-p", "test", "--max-cost", "10.00", "-m", "5", "--dry-run", "--disable-updates"}},
+		{"max-duration only", []string{"-p", "test", "--max-duration", "1h", "-m", "5", "--dry-run", "--disable-updates"}},
+		{"all limits combined", []string{"-p", "test", "-m", "10", "--max-cost", "5.00", "--max-duration", "30m", "--dry-run", "--disable-updates"}},
+		{"with reviewer", []string{"-p", "test", "-m", "5", "-r", "run tests", "--dry-run", "--disable-updates"}},
+		{"with github options", []string{"-p", "test", "-m", "5", "--owner", "org", "--repo", "repo", "--dry-run", "--disable-updates"}},
+		{"with dry-run", []string{"-p", "test", "-m", "5", "--dry-run", "--disable-updates"}},
+		{"with disable-commits", []string{"-p", "test", "-m", "5", "--disable-commits", "--dry-run", "--disable-updates"}},
+		{"with worktree options", []string{"-p", "test", "-m", "5", "--worktree", "test-wt", "--cleanup-worktree", "--dry-run", "--disable-updates"}},
 	}
 
 	validationErrors := []string{
@@ -218,7 +230,7 @@ func TestE2E_MergeStrategies(t *testing.T) {
 
 	for _, strategy := range []string{"squash", "merge", "rebase"} {
 		t.Run(strategy, func(t *testing.T) {
-			output, err := exec.Command(binPath, "-p", "test", "-m", "1", "--merge-strategy", strategy).CombinedOutput()
+			output, err := exec.Command(binPath, "-p", "test", "-m", "1", "--merge-strategy", strategy, "--dry-run", "--disable-updates").CombinedOutput()
 			if err != nil && strings.Contains(string(output), "merge-strategy must be") {
 				t.Errorf("valid merge strategy %q was rejected", strategy)
 			}
@@ -230,11 +242,37 @@ func TestE2E_DurationFormats(t *testing.T) {
 	skipIfShort(t)
 	binPath := buildBinary(t)
 
+	// Note: -m 3 is used as a safety limit to prevent infinite loops in dry-run mode
 	for _, duration := range []string{"30s", "5m", "2h", "1h30m", "2h30m15s"} {
 		t.Run(duration, func(t *testing.T) {
-			output, err := exec.Command(binPath, "-p", "test", "--max-duration", duration).CombinedOutput()
+			output, err := exec.Command(binPath, "-p", "test", "--max-duration", duration, "-m", "3", "--dry-run", "--disable-updates").CombinedOutput()
 			if err != nil && strings.Contains(string(output), "invalid duration") {
 				t.Errorf("valid duration %q was rejected", duration)
+			}
+		})
+	}
+}
+
+func TestE2E_DryRunStopReasons(t *testing.T) {
+	skipIfShort(t)
+	binPath := buildBinary(t)
+
+	tests := []struct {
+		name       string
+		args       []string
+		stopReason string
+	}{
+		{"max_runs", []string{"-p", "test", "-m", "3", "--dry-run", "--disable-updates"}, "max_runs_reached"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := exec.Command(binPath, tt.args...).CombinedOutput()
+			if err != nil {
+				t.Fatalf("unexpected error: %v\noutput: %s", err, output)
+			}
+			if !strings.Contains(string(output), tt.stopReason) {
+				t.Errorf("expected stop reason %q in output, got: %s", tt.stopReason, output)
 			}
 		})
 	}

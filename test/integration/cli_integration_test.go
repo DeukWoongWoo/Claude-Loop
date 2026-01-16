@@ -11,6 +11,8 @@ import (
 )
 
 func TestCLI_FlagParsing_AllFlags(t *testing.T) {
+	// Note: All tests include --dry-run and --disable-updates to prevent the loop
+	// from actually executing during tests.
 	tests := []struct {
 		name     string
 		args     []string
@@ -19,7 +21,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 	}{
 		{
 			name: "minimal valid flags with max-runs",
-			args: []string{"-p", "test prompt", "-m", "5"},
+			args: []string{"-p", "test prompt", "-m", "5", "--dry-run", "--disable-updates"},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "test prompt", f.Prompt)
 				assert.Equal(t, 5, f.MaxRuns)
@@ -27,7 +29,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 		},
 		{
 			name: "minimal valid flags with max-cost",
-			args: []string{"-p", "test prompt", "--max-cost", "10.50"},
+			args: []string{"-p", "test prompt", "--max-cost", "10.50", "--dry-run", "--disable-updates"},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "test prompt", f.Prompt)
 				assert.Equal(t, 10.50, f.MaxCost)
@@ -35,7 +37,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 		},
 		{
 			name: "minimal valid flags with max-duration",
-			args: []string{"-p", "test prompt", "--max-duration", "2h30m"},
+			args: []string{"-p", "test prompt", "--max-duration", "2h30m", "--dry-run", "--disable-updates"},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "test prompt", f.Prompt)
 				assert.Equal(t, 2*time.Hour+30*time.Minute, f.MaxDuration)
@@ -48,6 +50,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 				"-m", "10",
 				"--max-cost", "5.50",
 				"--max-duration", "1h",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, 10, f.MaxRuns)
@@ -61,6 +64,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 				"-p", "prompt", "-m", "1",
 				"--owner", "myorg",
 				"--repo", "myrepo",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "myorg", f.Owner)
@@ -72,6 +76,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--disable-commits",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.True(t, f.DisableCommits)
@@ -84,6 +89,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 				"--disable-branches",
 				"--git-branch-prefix", "ai/",
 				"--merge-strategy", "rebase",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.True(t, f.DisableBranches)
@@ -97,7 +103,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 				"-p", "prompt", "-m", "1",
 				"--completion-signal", "DONE",
 				"--completion-threshold", "5",
-				"--dry-run",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "DONE", f.CompletionSignal)
@@ -110,6 +116,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"-r", "run tests",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "run tests", f.ReviewPrompt)
@@ -120,6 +127,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--review-prompt", "npm test && npm run lint",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "npm test && npm run lint", f.ReviewPrompt)
@@ -130,6 +138,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--ci-retry-max", "3",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, 3, f.CIRetryMax)
@@ -140,6 +149,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--disable-ci-retry",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.True(t, f.DisableCIRetry)
@@ -150,6 +160,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--notes-file", "NOTES.md",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "NOTES.md", f.NotesFile)
@@ -162,6 +173,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 				"--worktree", "test-worktree",
 				"--worktree-base-dir", "/custom/path",
 				"--cleanup-worktree",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.Equal(t, "test-worktree", f.Worktree)
@@ -176,6 +188,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 				"--reset-principles",
 				"--principles-file", "custom.yaml",
 				"--log-decisions",
+				"--dry-run", "--disable-updates",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.True(t, f.ResetPrinciples)
@@ -188,6 +201,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--auto-update",
+				"--dry-run",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.True(t, f.AutoUpdate)
@@ -198,6 +212,7 @@ func TestCLI_FlagParsing_AllFlags(t *testing.T) {
 			args: []string{
 				"-p", "prompt", "-m", "1",
 				"--disable-updates",
+				"--dry-run",
 			},
 			validate: func(t *testing.T, f *cli.Flags) {
 				assert.True(t, f.DisableUpdates)
@@ -267,7 +282,7 @@ func TestCLI_ValidationErrors(t *testing.T) {
 
 func TestCLI_DefaultValues(t *testing.T) {
 	cmd := cli.NewRootCmd()
-	cmd.SetArgs([]string{"-p", "test", "-m", "1"})
+	cmd.SetArgs([]string{"-p", "test", "-m", "1", "--dry-run", "--disable-updates"})
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 
@@ -346,7 +361,7 @@ func TestCLI_DurationParsing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := cli.NewRootCmd()
-			cmd.SetArgs([]string{"-p", "test", "--max-duration", tt.duration})
+			cmd.SetArgs([]string{"-p", "test", "--max-duration", tt.duration, "--dry-run", "--disable-updates"})
 
 			err := cmd.Execute()
 			require.NoError(t, err)
@@ -372,7 +387,7 @@ func TestCLI_MergeStrategyValidation(t *testing.T) {
 	for _, strategy := range validStrategies {
 		t.Run(strategy, func(t *testing.T) {
 			cmd := cli.NewRootCmd()
-			cmd.SetArgs([]string{"-p", "test", "-m", "1", "--merge-strategy", strategy})
+			cmd.SetArgs([]string{"-p", "test", "-m", "1", "--merge-strategy", strategy, "--dry-run", "--disable-updates"})
 
 			err := cmd.Execute()
 			require.NoError(t, err)
