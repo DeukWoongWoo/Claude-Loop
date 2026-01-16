@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,9 +60,9 @@ func buildBinary(t *testing.T) string {
 		cmd := exec.Command("go", "build", "-o", cachedBinary, "./cmd/claude-loop")
 		cmd.Dir = projectRoot
 
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			buildError = &exec.ExitError{Stderr: output}
+		output, buildErr := cmd.CombinedOutput()
+		if buildErr != nil {
+			buildError = fmt.Errorf("build failed: %w\noutput: %s", buildErr, output)
 			cachedBinary = ""
 			return
 		}
@@ -218,7 +219,6 @@ func TestE2E_FlagCombinations(t *testing.T) {
 		{"all limits combined", []string{"-p", "test", "-m", "10", "--max-cost", "5.00", "--max-duration", "30m", "--dry-run", "--disable-updates"}},
 		{"with reviewer", []string{"-p", "test", "-m", "5", "-r", "run tests", "--dry-run", "--disable-updates"}},
 		{"with github options", []string{"-p", "test", "-m", "5", "--owner", "org", "--repo", "repo", "--dry-run", "--disable-updates"}},
-		{"with dry-run", []string{"-p", "test", "-m", "5", "--dry-run", "--disable-updates"}},
 		{"with disable-commits", []string{"-p", "test", "-m", "5", "--disable-commits", "--dry-run", "--disable-updates"}},
 		{"with worktree options", []string{"-p", "test", "-m", "5", "--worktree", "test-wt", "--cleanup-worktree", "--dry-run", "--disable-updates"}},
 	}
