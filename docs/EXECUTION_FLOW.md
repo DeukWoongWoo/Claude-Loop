@@ -1,6 +1,8 @@
 # claude-loop Execution Flow
 
 > Complete code flow trace of the `claude-loop` CLI execution, documented file by file.
+>
+> See also: [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status of each feature.
 
 ---
 
@@ -267,7 +269,7 @@ Prompt composition order:
 7. Notes guidelines
 ```
 
-**Notes Loading Code (line 85-101):**
+**Notes Loading Code (line 86-101):**
 
 ```go
 // 5. Notes from Previous Iteration (if file exists)
@@ -414,7 +416,66 @@ const TemplateNotesCreateNew = "Create a `NOTES_FILE_PLACEHOLDER` file with rele
 
 ---
 
-## 10. Conclusion
+## 10. Worktree (Parallel Execution) - Not Yet Integrated
+
+### Current Status
+
+The `--worktree` flag is registered but **not yet integrated** into the main execution flow.
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| Flag registration | `root.go:284-287` | Registered |
+| WorktreeManager | `internal/git/worktree.go` | Implemented (D) |
+| CLI Integration | `runMainLoop()` | Not integrated |
+| `--list-worktrees` | `handleListWorktrees()` | Working |
+
+### Available Flags
+
+```go
+// root.go:284-287
+flags.StringVar(&f.Worktree, "worktree", "", "Run in a git worktree for parallel execution")
+flags.StringVar(&f.WorktreeBaseDir, "worktree-base-dir", "../claude-loop-worktrees", "Base directory for worktrees")
+flags.BoolVar(&f.CleanupWorktree, "cleanup-worktree", false, "Remove worktree after completion")
+flags.BoolVar(&f.ListWorktrees, "list-worktrees", false, "List all active git worktrees and exit")
+```
+
+### What Works Now
+
+Only `--list-worktrees` is currently functional:
+
+```bash
+claude-loop --list-worktrees
+```
+
+This calls `handleListWorktrees()` (root.go:329-341) which uses `WorktreeManager.List()`.
+
+### Future Integration
+
+When integrated, the expected flow will be:
+
+1. `runMainLoop()` checks if `globalFlags.Worktree` is set
+2. Calls `WorktreeManager.Setup()` to create/reuse worktree
+3. Changes working directory to worktree path
+4. Runs the main loop in that worktree
+5. If `--cleanup-worktree` is set, calls `WorktreeManager.Remove()` after completion
+
+### Notes File in Parallel Execution
+
+Each worktree will have its own independent `SHARED_TASK_NOTES.md`:
+
+```
+Main repo:     ./SHARED_TASK_NOTES.md
+Worktree A:    ../claude-loop-worktrees/task-a/SHARED_TASK_NOTES.md
+Worktree B:    ../claude-loop-worktrees/task-b/SHARED_TASK_NOTES.md
+```
+
+Notes files are **not shared** between parallel instances.
+
+See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for current implementation status.
+
+---
+
+## 11. Conclusion
 
 **Even without specifying `--notes-file`, the default value `SHARED_TASK_NOTES.md` is used, automatically ensuring iteration continuity.**
 
