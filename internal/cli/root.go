@@ -444,9 +444,8 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 	displayLoopResult(result)
 }
 
-// NewRootCmd creates a new root command for testing.
-// This allows tests to work with a fresh command instance.
-func NewRootCmd() *cobra.Command {
+// newRootCmdWithRunner creates a new root command with the specified run function.
+func newRootCmdWithRunner(runner func(cmd *cobra.Command, args []string)) *cobra.Command {
 	ResetFlags()
 	maxDurationStr = ""
 
@@ -456,7 +455,7 @@ func NewRootCmd() *cobra.Command {
 		Long:    rootCmd.Long,
 		Version: rootCmd.Version,
 		PreRunE: rootCmd.PreRunE,
-		Run:     runMainLoop,
+		Run:     runner,
 	}
 
 	configureCommand(cmd)
@@ -465,26 +464,17 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
+// NewRootCmd creates a new root command for testing.
+// This allows tests to work with a fresh command instance.
+func NewRootCmd() *cobra.Command {
+	return newRootCmdWithRunner(runMainLoop)
+}
+
 // NewRootCmdForFlagParsing creates a root command that only parses flags without executing.
 // Use this for unit/integration tests that need to test flag parsing behavior
 // without actually running the main loop.
 func NewRootCmdForFlagParsing() *cobra.Command {
-	ResetFlags()
-	maxDurationStr = ""
-
-	cmd := &cobra.Command{
-		Use:     "claude-loop",
-		Short:   "Autonomous AI development loop with 4-Layer Principles Framework",
-		Long:    rootCmd.Long,
-		Version: rootCmd.Version,
-		PreRunE: rootCmd.PreRunE,
-		Run:     func(cmd *cobra.Command, args []string) {}, // No-op run to trigger PreRunE
-	}
-
-	configureCommand(cmd)
-	registerFlags(cmd)
-
-	return cmd
+	return newRootCmdWithRunner(func(cmd *cobra.Command, args []string) {})
 }
 
 // Execute runs the root command.
