@@ -26,7 +26,7 @@ Autonomous AI development loop CLI written in Go.
 cmd/claude-loop/main.go     # Entry point
 internal/
   cli/
-    root.go                 # Cobra root command, flag registration
+    root.go                 # Cobra root command, flag registration, main loop execution
     flags.go                # Flags struct, defaults
     validation.go           # CLI validation logic
     *_test.go               # Unit tests (95%+ coverage)
