@@ -15,6 +15,7 @@ import (
 	"github.com/DeukWoongWoo/claude-loop/internal/config"
 	"github.com/DeukWoongWoo/claude-loop/internal/git"
 	"github.com/DeukWoongWoo/claude-loop/internal/loop"
+	"github.com/DeukWoongWoo/claude-loop/internal/principles"
 	"github.com/DeukWoongWoo/claude-loop/internal/update"
 	"github.com/DeukWoongWoo/claude-loop/internal/version"
 	"github.com/spf13/cobra"
@@ -309,7 +310,7 @@ func parseDuration() error {
 }
 
 // ConfigToLoopConfig creates a loop.Config from CLI Flags.
-// Note: Principles and NeedsPrincipleCollection must be set separately after loading principles.
+// Note: Principles must be set separately after loading.
 func ConfigToLoopConfig(f *Flags) *loop.Config {
 	return &loop.Config{
 		Prompt:               f.Prompt,
@@ -394,28 +395,19 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 	// Check for updates at startup
 	checkForUpdatesAtStartup(ctx, globalFlags)
 
-	// Load principles
-	var principles *config.Principles
-	var needsPrincipleCollection bool
+	// Create Claude client (needed for both principles collection and main loop)
+	claudeClient := claude.NewClient(nil)
 
-	if _, err := os.Stat(globalFlags.PrinciplesFile); os.IsNotExist(err) || globalFlags.ResetPrinciples {
-		// File doesn't exist or user wants to reset - need collection
-		needsPrincipleCollection = true
-		principles = config.DefaultPrinciples(config.PresetStartup)
-	} else {
-		// File exists - load it
-		var err error
-		principles, err = config.LoadFromFile(globalFlags.PrinciplesFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading principles: %v\n", err)
-			os.Exit(1)
-		}
+	// Load or collect principles
+	loadedPrinciples, err := loadOrCollectPrinciples(ctx, claudeClient, globalFlags)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Create loop config from flags
 	loopConfig := ConfigToLoopConfig(globalFlags)
-	loopConfig.Principles = principles
-	loopConfig.NeedsPrincipleCollection = needsPrincipleCollection
+	loopConfig.Principles = loadedPrinciples
 	loopConfig.OnProgress = func(state *loop.State) {
 		maxRunsStr := "unlimited"
 		if globalFlags.MaxRuns > 0 {
@@ -428,9 +420,6 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 			state.Elapsed().Round(time.Second),
 		)
 	}
-
-	// Create Claude client
-	claudeClient := claude.NewClient(nil)
 
 	// Create and run Executor
 	executor := loop.NewExecutor(loopConfig, claudeClient)
@@ -475,6 +464,36 @@ func NewRootCmd() *cobra.Command {
 // without actually running the main loop.
 func NewRootCmdForFlagParsing() *cobra.Command {
 	return newRootCmdWithRunner(func(cmd *cobra.Command, args []string) {})
+}
+
+// loadOrCollectPrinciples loads existing principles or collects them interactively.
+func loadOrCollectPrinciples(ctx context.Context, client *claude.Client, flags *Flags) (*config.Principles, error) {
+	collector := principles.NewCollector(client, flags.PrinciplesFile)
+
+	if !collector.NeedsCollection(flags.ResetPrinciples) {
+		return config.LoadFromFile(flags.PrinciplesFile)
+	}
+
+	// In dry-run mode, use defaults instead of interactive collection
+	if flags.DryRun {
+		fmt.Println("Principles file not found. Using default principles for dry-run mode.")
+		return config.DefaultPrinciples(config.PresetStartup), nil
+	}
+
+	// Run interactive collection
+	fmt.Println("Principles file not found. Starting interactive collection...")
+	fmt.Println("Please answer the following questions to configure project principles.")
+	fmt.Println()
+
+	if err := collector.Collect(ctx); err != nil {
+		return nil, fmt.Errorf("collecting principles: %w", err)
+	}
+
+	fmt.Println()
+	fmt.Println("Principles collected successfully. Continuing with main loop...")
+	fmt.Println()
+
+	return config.LoadFromFile(flags.PrinciplesFile)
 }
 
 // Execute runs the root command.

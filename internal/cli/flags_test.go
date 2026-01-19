@@ -317,7 +317,6 @@ func TestConfigToLoopConfig(t *testing.T) {
 	assert.Equal(t, "NOTES.md", cfg.NotesFile)
 	assert.Equal(t, "run tests", cfg.ReviewPrompt)
 	assert.True(t, cfg.LogDecisions)
-	// Principles and NeedsPrincipleCollection should be nil/false (set separately)
+	// Principles should be nil (set separately after loading)
 	assert.Nil(t, cfg.Principles)
-	assert.False(t, cfg.NeedsPrincipleCollection)
 }

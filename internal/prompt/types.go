@@ -11,10 +11,6 @@ type BuildContext struct {
 	// Principles is the loaded principles configuration (may be nil if not loaded).
 	Principles *config.Principles
 
-	// NeedsPrincipleCollection indicates whether principle collection is needed
-	// (first run without principles.yaml).
-	NeedsPrincipleCollection bool
-
 	// CompletionSignal is the phrase used to signal project completion
 	// (e.g., "CONTINUOUS_CLAUDE_PROJECT_COMPLETE").
 	CompletionSignal string

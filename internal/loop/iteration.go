@@ -47,15 +47,12 @@ func (ih *IterationHandler) Execute(ctx context.Context, state *State) (*Iterati
 	}
 
 	// Build enhanced prompt
-	// Use SuccessfulIterations to determine if this is the first successful run,
-	// so principle collection isn't skipped if the first attempt failed.
 	buildCtx := prompt.BuildContext{
-		UserPrompt:               ih.config.Prompt,
-		Principles:               ih.config.Principles,
-		NeedsPrincipleCollection: ih.config.NeedsPrincipleCollection && state.SuccessfulIterations == 0,
-		CompletionSignal:         ih.config.CompletionSignal,
-		NotesFile:                ih.config.NotesFile,
-		Iteration:                state.TotalIterations,
+		UserPrompt:       ih.config.Prompt,
+		Principles:       ih.config.Principles,
+		CompletionSignal: ih.config.CompletionSignal,
+		NotesFile:        ih.config.NotesFile,
+		Iteration:        state.TotalIterations,
 	}
 
 	buildResult, err := ih.promptBuilder.Build(buildCtx)

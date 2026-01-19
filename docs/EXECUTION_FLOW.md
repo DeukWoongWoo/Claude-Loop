@@ -69,15 +69,20 @@ var rootCmd = &cobra.Command{
 **Core Code:**
 
 ```go
-// line 416-430
-loopConfig := ConfigToLoopConfig(globalFlags)
-loopConfig.Principles = principles
-loopConfig.NeedsPrincipleCollection = needsPrincipleCollection
-
-// line 433
+// Create Claude client (needed for both principles collection and main loop)
 claudeClient := claude.NewClient(nil)
 
-// line 436-437
+// Load or collect principles (before loop)
+loadedPrinciples, err := loadOrCollectPrinciples(ctx, claudeClient, globalFlags)
+if err != nil {
+    // Handle error
+}
+
+// Create loop config from flags
+loopConfig := ConfigToLoopConfig(globalFlags)
+loopConfig.Principles = loadedPrinciples
+
+// Run executor
 executor := loop.NewExecutor(loopConfig, claudeClient)
 result, err := executor.Run(ctx)
 ```
@@ -223,12 +228,11 @@ func (ih *IterationHandler) Execute(ctx context.Context, state *State) (*Iterati
 
     // Build prompt ★
     buildCtx := prompt.BuildContext{
-        UserPrompt:               ih.config.Prompt,
-        Principles:               ih.config.Principles,
-        NeedsPrincipleCollection: ih.config.NeedsPrincipleCollection && state.SuccessfulIterations == 0,
-        CompletionSignal:         ih.config.CompletionSignal,
-        NotesFile:                ih.config.NotesFile,  // ← "SHARED_TASK_NOTES.md"
-        Iteration:                state.TotalIterations,
+        UserPrompt:       ih.config.Prompt,
+        Principles:       ih.config.Principles,
+        CompletionSignal: ih.config.CompletionSignal,
+        NotesFile:        ih.config.NotesFile,  // ← "SHARED_TASK_NOTES.md"
+        Iteration:        state.TotalIterations,
     }
 
     buildResult, err := ih.promptBuilder.Build(buildCtx)

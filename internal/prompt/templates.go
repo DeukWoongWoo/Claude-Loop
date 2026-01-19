@@ -10,6 +10,9 @@ const (
 
 	// PlaceholderNotesFile is replaced with the notes file path.
 	PlaceholderNotesFile = "NOTES_FILE_PLACEHOLDER"
+
+	// PlaceholderPrinciplesFile is replaced with the principles file path.
+	PlaceholderPrinciplesFile = "PRINCIPLES_FILE_PLACEHOLDER"
 )
 
 // TemplateWorkflowContext provides continuous workflow context.
@@ -54,7 +57,7 @@ Options:
 2. "UX: Easy to use (1-3) vs Powerful features (7-10)?"
 
 ### Step 3: Generate principles.yaml
-After getting answers, use the Write tool to create ` + "`" + `.claude/principles.yaml` + "`" + ` with:
+After getting answers, use the Write tool to create ` + "`" + `PRINCIPLES_FILE_PLACEHOLDER` + "`" + ` with:
 - version: "2.3"
 - preset: <selected_type>
 - created_at: <current_date>

@@ -75,9 +75,8 @@ type Config struct {
 	OnProgress           func(state *State) // Optional progress callback (nil allowed)
 
 	// Prompt builder fields
-	NotesFile                string             // Path to shared notes file
-	Principles               *config.Principles // Loaded principles (may be nil)
-	NeedsPrincipleCollection bool               // Whether principle collection is needed (first run)
+	NotesFile  string             // Path to shared notes file
+	Principles *config.Principles // Loaded principles (may be nil)
 
 	// Reviewer fields
 	ReviewPrompt string // Reviewer pass prompt (empty = disabled)

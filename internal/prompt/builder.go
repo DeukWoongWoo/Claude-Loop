@@ -35,24 +35,17 @@ func NewBuilderWithLoader(loader NotesLoader) *DefaultBuilder {
 
 // Build constructs an enhanced prompt from the given context.
 // The prompt is built in the following order:
-// 1. [Conditional] Principle collection prompt (if NeedsPrincipleCollection && Iteration==1)
-// 2. [Conditional] Decision principles (if Principles != nil)
-// 3. Workflow context (with CompletionSignal placeholder replaced)
-// 4. User prompt
-// 5. [Conditional] Notes from previous iteration (if file exists)
-// 6. Notes instructions (UPDATE or CREATE)
-// 7. Notes guidelines
+// 1. [Conditional] Decision principles (if Principles != nil)
+// 2. Workflow context (with CompletionSignal placeholder replaced)
+// 3. User prompt
+// 4. [Conditional] Notes from previous iteration (if file exists)
+// 5. Notes instructions (UPDATE or CREATE)
+// 6. Notes guidelines
 func (b *DefaultBuilder) Build(ctx BuildContext) (*BuildResult, error) {
 	var sb strings.Builder
 	result := &BuildResult{}
 
-	// 1. Principle Collection (first run without principles.yaml)
-	if ctx.NeedsPrincipleCollection && ctx.Iteration == 1 {
-		sb.WriteString(TemplatePrincipleCollection)
-		sb.WriteString("\n")
-	}
-
-	// 2. Decision Principles (if principles are loaded)
+	// 1. Decision Principles (if principles are loaded)
 	if ctx.Principles != nil {
 		principlesYAML, err := yaml.Marshal(ctx.Principles)
 		if err != nil {
@@ -69,7 +62,7 @@ func (b *DefaultBuilder) Build(ctx BuildContext) (*BuildResult, error) {
 		result.PrinciplesInjected = true
 	}
 
-	// 3. Workflow Context (with completion signal replaced)
+	// 2. Workflow Context (with completion signal replaced)
 	workflowContext := strings.ReplaceAll(
 		TemplateWorkflowContext,
 		PlaceholderCompletionSignal,
@@ -78,11 +71,11 @@ func (b *DefaultBuilder) Build(ctx BuildContext) (*BuildResult, error) {
 	sb.WriteString(workflowContext)
 	sb.WriteString("\n\n")
 
-	// 4. User Prompt
+	// 3. User Prompt
 	sb.WriteString(ctx.UserPrompt)
 	sb.WriteString("\n\n")
 
-	// 5. Notes from Previous Iteration (if file exists)
+	// 4. Notes from Previous Iteration (if file exists)
 	notesContent, notesExists, err := b.notesLoader.Load(ctx.NotesFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load notes: %w", err)
@@ -100,7 +93,7 @@ func (b *DefaultBuilder) Build(ctx BuildContext) (*BuildResult, error) {
 		result.NotesIncluded = true
 	}
 
-	// 6. Iteration Notes Instructions (only if NotesFile is specified)
+	// 5. Iteration Notes Instructions (only if NotesFile is specified)
 	if ctx.NotesFile != "" {
 		sb.WriteString(TemplateIterationNotes)
 
@@ -112,7 +105,7 @@ func (b *DefaultBuilder) Build(ctx BuildContext) (*BuildResult, error) {
 		sb.WriteString(notesInstruction)
 	}
 
-	// 7. Notes Guidelines (only if NotesFile is specified)
+	// 6. Notes Guidelines (only if NotesFile is specified)
 	if ctx.NotesFile != "" {
 		sb.WriteString(TemplateNotesGuidelines)
 	}

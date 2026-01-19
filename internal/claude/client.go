@@ -3,6 +3,7 @@ package claude
 import (
 	"bytes"
 	"context"
+	"os"
 	"os/exec"
 	"time"
 
@@ -163,6 +164,60 @@ func (c *Client) Execute(ctx context.Context, prompt string) (*loop.IterationRes
 		Duration:              duration,
 		CompletionSignalFound: false, // Detected by loop package
 	}, nil
+}
+
+// ExecuteInteractive runs claude in interactive mode.
+// This connects stdin/stdout/stderr directly to the terminal, allowing
+// Claude to use AskUserQuestion for interactive prompts.
+// Uses --print flag to send an initial prompt while keeping the session interactive.
+func (c *Client) ExecuteInteractive(ctx context.Context, prompt string) error {
+	args := []string{"--print", prompt}
+
+	// Add compatible flags from AdditionalFlags (skip --output-format which breaks interactive)
+	args = append(args, filterInteractiveFlags(c.opts.AdditionalFlags)...)
+
+	// Create command
+	cmd := c.opts.Executor.CommandContext(ctx, c.opts.ClaudePath, args...)
+
+	// Connect to terminal directly for interactive mode
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Run and wait for completion
+	if err := cmd.Run(); err != nil {
+		// Check if it's a context cancellation
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return &ClaudeError{Message: "interactive claude execution failed", Err: err}
+	}
+
+	return nil
+}
+
+// filterInteractiveFlags removes flags incompatible with interactive mode.
+// In particular, --output-format breaks terminal interaction.
+func filterInteractiveFlags(flags []string) []string {
+	var result []string
+	skipNext := false
+	for _, flag := range flags {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		// Skip --output-format and its value
+		if flag == "--output-format" {
+			skipNext = true
+			continue
+		}
+		// Skip --output-format=value style
+		if len(flag) > 15 && flag[:15] == "--output-format" {
+			continue
+		}
+		result = append(result, flag)
+	}
+	return result
 }
 
 // Verify interface compliance at compile time.

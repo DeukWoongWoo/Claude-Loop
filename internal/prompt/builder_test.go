@@ -38,12 +38,11 @@ func TestBuilder_Build_BasicPrompt(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Implement a new feature",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "PROJECT_COMPLETE",
-		NotesFile:                "SHARED_TASK_NOTES.md",
-		Iteration:                1,
+		UserPrompt:       "Implement a new feature",
+		Principles:       nil,
+		CompletionSignal: "PROJECT_COMPLETE",
+		NotesFile:        "SHARED_TASK_NOTES.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -90,12 +89,11 @@ func TestBuilder_Build_WithPrinciples(t *testing.T) {
 	}
 
 	ctx := BuildContext{
-		UserPrompt:               "Build the app",
-		Principles:               principles,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Build the app",
+		Principles:       principles,
+		CompletionSignal: "DONE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -110,7 +108,7 @@ func TestBuilder_Build_WithPrinciples(t *testing.T) {
 	assert.NotContains(t, result.Prompt, PlaceholderPrinciplesYAML)
 }
 
-func TestBuilder_Build_WithPrincipleCollection(t *testing.T) {
+func TestBuilder_Build_WithoutPrinciples(t *testing.T) {
 	t.Parallel()
 
 	builder := NewBuilderWithLoader(&MockNotesLoader{
@@ -120,12 +118,11 @@ func TestBuilder_Build_WithPrincipleCollection(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Start the project",
-		Principles:               nil,
-		NeedsPrincipleCollection: true,
-		CompletionSignal:         "COMPLETE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Start the project",
+		Principles:       nil,
+		CompletionSignal: "COMPLETE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -133,36 +130,11 @@ func TestBuilder_Build_WithPrincipleCollection(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, result.PrinciplesInjected)
 
-	// Verify principle collection prompt is included
-	assert.Contains(t, result.Prompt, "PRINCIPLE COLLECTION REQUIRED")
-	assert.Contains(t, result.Prompt, "AskUserQuestion")
-	assert.Contains(t, result.Prompt, "Project Type")
-}
-
-func TestBuilder_Build_PrincipleCollectionOnlyOnFirstIteration(t *testing.T) {
-	t.Parallel()
-
-	builder := NewBuilderWithLoader(&MockNotesLoader{
-		Content: "",
-		Exists:  false,
-		Err:     nil,
-	})
-
-	// Iteration 2 with NeedsPrincipleCollection=true should NOT include collection prompt
-	ctx := BuildContext{
-		UserPrompt:               "Continue work",
-		Principles:               nil,
-		NeedsPrincipleCollection: true,
-		CompletionSignal:         "COMPLETE",
-		NotesFile:                "notes.md",
-		Iteration:                2, // Not first iteration
-	}
-
-	result, err := builder.Build(ctx)
-
-	require.NoError(t, err)
-	// Principle collection should NOT be included on iteration 2
+	// Verify principle collection prompt is NOT included (collection happens before loop)
 	assert.NotContains(t, result.Prompt, "PRINCIPLE COLLECTION REQUIRED")
+	// Verify basic prompt structure
+	assert.Contains(t, result.Prompt, "Start the project")
+	assert.Contains(t, result.Prompt, "CONTINUOUS WORKFLOW CONTEXT")
 }
 
 func TestBuilder_Build_WithExistingNotes(t *testing.T) {
@@ -176,12 +148,11 @@ func TestBuilder_Build_WithExistingNotes(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Continue the work",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "SHARED_TASK_NOTES.md",
-		Iteration:                3,
+		UserPrompt:       "Continue the work",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "SHARED_TASK_NOTES.md",
+		Iteration:        3,
 	}
 
 	result, err := builder.Build(ctx)
@@ -210,12 +181,11 @@ func TestBuilder_Build_WithEmptyNotesFile(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Do something",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Do something",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -240,12 +210,11 @@ func TestBuilder_Build_CompletionSignalReplacement(t *testing.T) {
 
 	customSignal := "MY_CUSTOM_COMPLETION_SIGNAL_12345"
 	ctx := BuildContext{
-		UserPrompt:               "Test",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         customSignal,
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Test",
+		Principles:       nil,
+		CompletionSignal: customSignal,
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -266,12 +235,11 @@ func TestBuilder_Build_NotesFileReplacement(t *testing.T) {
 
 	customNotesFile := "MY_CUSTOM_NOTES_FILE.md"
 	ctx := BuildContext{
-		UserPrompt:               "Test",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                customNotesFile,
-		Iteration:                1,
+		UserPrompt:       "Test",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        customNotesFile,
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -292,12 +260,11 @@ func TestBuilder_Build_ErrorOnNotesLoad(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Test",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Test",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -332,12 +299,11 @@ func TestBuilder_Build_FullIntegration(t *testing.T) {
 	}
 
 	ctx := BuildContext{
-		UserPrompt:               "Implement authentication",
-		Principles:               principles,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "AUTH_COMPLETE",
-		NotesFile:                "AUTH_NOTES.md",
-		Iteration:                5,
+		UserPrompt:       "Implement authentication",
+		Principles:       principles,
+		CompletionSignal: "AUTH_COMPLETE",
+		NotesFile:        "AUTH_NOTES.md",
+		Iteration:        5,
 	}
 
 	result, err := builder.Build(ctx)
@@ -371,7 +337,7 @@ func TestBuilder_Build_FullIntegration(t *testing.T) {
 func TestBuilder_Build_PromptOrdering(t *testing.T) {
 	t.Parallel()
 
-	// Test ordering when principle collection is needed
+	// Test ordering of prompt sections
 	builder := NewBuilderWithLoader(&MockNotesLoader{
 		Content: "notes",
 		Exists:  true,
@@ -379,25 +345,24 @@ func TestBuilder_Build_PromptOrdering(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "User prompt here",
-		Principles:               nil,
-		NeedsPrincipleCollection: true,
-		CompletionSignal:         "DONE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "User prompt here",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
 
 	require.NoError(t, err)
 
-	// Principle collection should come first
-	collectionIdx := strings.Index(result.Prompt, "PRINCIPLE COLLECTION REQUIRED")
+	// Verify ordering: workflow context -> user prompt -> notes
 	workflowIdx := strings.Index(result.Prompt, "CONTINUOUS WORKFLOW CONTEXT")
 	userPromptIdx := strings.Index(result.Prompt, "User prompt here")
+	notesIdx := strings.Index(result.Prompt, "CONTEXT FROM PREVIOUS ITERATION")
 
-	assert.True(t, collectionIdx < workflowIdx, "collection should come before workflow")
 	assert.True(t, workflowIdx < userPromptIdx, "workflow should come before user prompt")
+	assert.True(t, userPromptIdx < notesIdx, "user prompt should come before notes")
 }
 
 func TestBuilder_Build_NotesGuidelines(t *testing.T) {
@@ -410,12 +375,11 @@ func TestBuilder_Build_NotesGuidelines(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Test",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Test",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -443,12 +407,11 @@ func TestBuilder_Build_EmptyUserPrompt(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	// Should still work with empty user prompt
@@ -469,12 +432,11 @@ func TestBuilder_Build_EmptyCompletionSignal(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Test",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "",
-		NotesFile:                "notes.md",
-		Iteration:                1,
+		UserPrompt:       "Test",
+		Principles:       nil,
+		CompletionSignal: "",
+		NotesFile:        "notes.md",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)
@@ -494,12 +456,11 @@ func TestBuilder_Build_EmptyNotesFile(t *testing.T) {
 	})
 
 	ctx := BuildContext{
-		UserPrompt:               "Test",
-		Principles:               nil,
-		NeedsPrincipleCollection: false,
-		CompletionSignal:         "DONE",
-		NotesFile:                "",
-		Iteration:                1,
+		UserPrompt:       "Test",
+		Principles:       nil,
+		CompletionSignal: "DONE",
+		NotesFile:        "",
+		Iteration:        1,
 	}
 
 	result, err := builder.Build(ctx)

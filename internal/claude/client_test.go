@@ -229,3 +229,89 @@ func TestClient_ImplementsClaudeClient(t *testing.T) {
 	// The actual check is: var _ loop.ClaudeClient = (*Client)(nil)
 	_ = NewClient(nil)
 }
+
+func TestClient_ExecuteInteractive_Success(t *testing.T) {
+	// Use a simple echo command to simulate interactive execution
+	mockExec := &MockExecutor{Script: "", ExitCode: 0}
+
+	client := NewClient(&ClientOptions{
+		ClaudePath: "echo",
+		Executor:   mockExec,
+	})
+
+	err := client.ExecuteInteractive(context.Background(), "test prompt")
+
+	require.NoError(t, err)
+}
+
+func TestClient_ExecuteInteractive_Error(t *testing.T) {
+	mockExec := &MockExecutor{Script: "", ExitCode: 1}
+
+	client := NewClient(&ClientOptions{
+		Executor: mockExec,
+	})
+
+	err := client.ExecuteInteractive(context.Background(), "test prompt")
+
+	require.Error(t, err)
+	var claudeErr *ClaudeError
+	assert.ErrorAs(t, err, &claudeErr)
+	assert.Equal(t, "interactive claude execution failed", claudeErr.Message)
+}
+
+func TestClient_ExecuteInteractive_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	client := NewClient(&ClientOptions{
+		ClaudePath:      "sleep",
+		AdditionalFlags: []string{},
+	})
+	client.opts.Executor = &DefaultExecutor{}
+
+	err := client.ExecuteInteractive(ctx, "10") // sleep 10 seconds
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestFilterInteractiveFlags(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "empty flags",
+			input:    []string{},
+			expected: nil,
+		},
+		{
+			name:     "no output-format",
+			input:    []string{"--dangerously-skip-permissions", "--verbose"},
+			expected: []string{"--dangerously-skip-permissions", "--verbose"},
+		},
+		{
+			name:     "filter output-format with value",
+			input:    []string{"--dangerously-skip-permissions", "--output-format", "stream-json", "--verbose"},
+			expected: []string{"--dangerously-skip-permissions", "--verbose"},
+		},
+		{
+			name:     "filter output-format=value style",
+			input:    []string{"--dangerously-skip-permissions", "--output-format=stream-json", "--verbose"},
+			expected: []string{"--dangerously-skip-permissions", "--verbose"},
+		},
+		{
+			name:     "only output-format",
+			input:    []string{"--output-format", "json"},
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterInteractiveFlags(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
