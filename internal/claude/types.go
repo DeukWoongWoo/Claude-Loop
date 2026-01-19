@@ -4,11 +4,12 @@ package claude
 // StreamMessage represents a single line in the stream-json output.
 // The claude CLI outputs newline-delimited JSON objects.
 type StreamMessage struct {
-	Type         string            `json:"type"`                    // "assistant", "result", "system", etc.
-	Message      *AssistantMessage `json:"message,omitempty"`       // Present when type="assistant"
-	Result       string            `json:"result,omitempty"`        // Present when type="result"
+	Type         string            `json:"type"`                     // "assistant", "result", "system", etc.
+	Message      *AssistantMessage `json:"message,omitempty"`        // Present when type="assistant"
+	Result       string            `json:"result,omitempty"`         // Present when type="result"
 	TotalCostUSD float64           `json:"total_cost_usd,omitempty"` // Present in result
-	IsError      bool              `json:"is_error,omitempty"`      // Present in result
+	IsError      bool              `json:"is_error,omitempty"`       // Present in result
+	SessionID    string            `json:"session_id,omitempty"`     // Session ID for resume capability
 }
 
 // AssistantMessage contains the assistant's response content.
@@ -29,4 +30,14 @@ type ParsedResult struct {
 	TotalCostUSD float64         // Total cost from the result message
 	IsError      bool            // Whether the execution resulted in an error
 	RawMessages  []StreamMessage // All parsed messages (for debugging)
+	SessionID    string          // Session ID for resume capability
+}
+
+// SessionResult contains execution result with session info for resume.
+// Used for multi-turn interactions like principles collection.
+// Note: IsError is not included because errors are returned via the error return value.
+type SessionResult struct {
+	Output    string  // Concatenated text output from assistant messages
+	SessionID string  // Session ID for resume capability
+	Cost      float64 // Total cost from the result message
 }

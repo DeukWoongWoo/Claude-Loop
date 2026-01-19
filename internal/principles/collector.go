@@ -2,31 +2,37 @@
 package principles
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
-	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/DeukWoongWoo/claude-loop/internal/prompt"
+	"github.com/DeukWoongWoo/claude-loop/internal/config"
 )
-
-// InteractiveClient defines the interface for interactive Claude execution.
-type InteractiveClient interface {
-	ExecuteInteractive(ctx context.Context, prompt string) error
-}
 
 // Collector handles the collection of project principles via interactive prompts.
 type Collector struct {
-	client         InteractiveClient
 	principlesPath string
+	reader         io.Reader
 }
 
 // NewCollector creates a new Collector.
-func NewCollector(client InteractiveClient, principlesPath string) *Collector {
+func NewCollector(principlesPath string) *Collector {
 	return &Collector{
-		client:         client,
 		principlesPath: principlesPath,
+		reader:         os.Stdin,
+	}
+}
+
+// NewCollectorWithReader creates a new Collector with a custom reader (for testing).
+func NewCollectorWithReader(principlesPath string, reader io.Reader) *Collector {
+	return &Collector{
+		principlesPath: principlesPath,
+		reader:         reader,
 	}
 }
 
@@ -40,48 +46,116 @@ func (c *Collector) NeedsCollection(forceReset bool) bool {
 	return os.IsNotExist(err)
 }
 
-// Collect runs an interactive Claude session to collect principles from the user.
+// Collect runs an interactive CLI session to collect principles from the user.
 // The principles are saved to the configured principlesPath.
 func (c *Collector) Collect(ctx context.Context) error {
-	// Ensure the parent directory exists
-	dir := filepath.Dir(c.principlesPath)
-	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return &CollectorError{
-				Message: "failed to create principles directory",
-				Err:     err,
-			}
-		}
+	reader := bufio.NewReader(c.reader)
+
+	// Step 1: Ask project type
+	preset, err := c.askProjectType(ctx, reader)
+	if err != nil {
+		return err
 	}
 
-	// Build the collection prompt with the target path substituted
-	collectionPrompt := buildCollectionPrompt(c.principlesPath)
+	// Step 2: Load defaults and ask follow-up questions
+	principles := config.DefaultPrinciples(preset)
+	if err := c.askFollowUpQuestions(ctx, reader, preset, principles); err != nil {
+		return err
+	}
 
-	// Execute interactive session
-	if err := c.client.ExecuteInteractive(ctx, collectionPrompt); err != nil {
+	// Step 3: Set timestamp and save
+	principles.CreatedAt = time.Now().Format("2006-01-02")
+	if err := config.SaveToFile(c.principlesPath, principles); err != nil {
 		return &CollectorError{
-			Message: "interactive principles collection failed",
+			Message: "failed to save principles file",
 			Err:     err,
-		}
-	}
-
-	// Verify the file was created
-	if _, err := os.Stat(c.principlesPath); os.IsNotExist(err) {
-		return &CollectorError{
-			Message: "principles file was not created after collection",
 		}
 	}
 
 	return nil
 }
 
-// buildCollectionPrompt returns the prompt for principle collection with the path substituted.
-func buildCollectionPrompt(principlesPath string) string {
-	return strings.ReplaceAll(
-		prompt.TemplatePrincipleCollection,
-		prompt.PlaceholderPrinciplesFile,
-		principlesPath,
-	)
+// askProjectType prompts the user to select a project type.
+func (c *Collector) askProjectType(ctx context.Context, reader *bufio.Reader) (config.Preset, error) {
+	select {
+	case <-ctx.Done():
+		return "", &CollectorError{Message: "cancelled", Err: ctx.Err()}
+	default:
+	}
+
+	fmt.Println("Select project type:")
+	fmt.Println("  1) Startup/MVP - Fast validation, focus on core features")
+	fmt.Println("  2) Enterprise - Stability first, thorough testing")
+	fmt.Println("  3) Open Source - Community contributions, API stability")
+	fmt.Print("> ")
+
+	input, _ := reader.ReadString('\n')
+	switch strings.TrimSpace(input) {
+	case "1":
+		return config.PresetStartup, nil
+	case "2":
+		return config.PresetEnterprise, nil
+	case "3":
+		return config.PresetOpenSource, nil
+	default:
+		return config.PresetStartup, nil
+	}
+}
+
+// askFollowUpQuestions asks preset-specific follow-up questions.
+func (c *Collector) askFollowUpQuestions(ctx context.Context, reader *bufio.Reader, preset config.Preset, p *config.Principles) error {
+	fmt.Println()
+	var err error
+	switch preset {
+	case config.PresetStartup:
+		p.Layer0.ScopePhilosophy, err = c.askNumber(ctx, reader, "MVP scope (1=minimal, 10=expansive)", 3)
+		if err != nil {
+			return err
+		}
+		p.Layer1.SpeedCorrectness, err = c.askNumber(ctx, reader, "Speed vs Quality (1=speed, 10=quality)", 4)
+		if err != nil {
+			return err
+		}
+	case config.PresetEnterprise:
+		p.Layer1.BlastRadius, err = c.askNumber(ctx, reader, "Change size (1=large, 10=small)", 9)
+		if err != nil {
+			return err
+		}
+		p.Layer1.InnovationStability, err = c.askNumber(ctx, reader, "Tech choice (1=new, 10=proven)", 8)
+		if err != nil {
+			return err
+		}
+	case config.PresetOpenSource:
+		p.Layer0.CurationModel, err = c.askNumber(ctx, reader, "Contributions (1=open, 10=verified)", 5)
+		if err != nil {
+			return err
+		}
+		p.Layer0.UXPhilosophy, err = c.askNumber(ctx, reader, "UX (1=easy, 10=powerful)", 5)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// askNumber prompts for a number input with a default value.
+func (c *Collector) askNumber(ctx context.Context, reader *bufio.Reader, prompt string, defaultVal int) (int, error) {
+	select {
+	case <-ctx.Done():
+		return 0, &CollectorError{Message: "cancelled", Err: ctx.Err()}
+	default:
+	}
+
+	fmt.Printf("%s [%d]: ", prompt, defaultVal)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return defaultVal, nil
+	}
+	if n, err := strconv.Atoi(input); err == nil && n >= 1 && n <= 10 {
+		return n, nil
+	}
+	return defaultVal, nil
 }
 
 // CollectorError represents an error during principle collection.

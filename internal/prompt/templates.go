@@ -10,9 +10,6 @@ const (
 
 	// PlaceholderNotesFile is replaced with the notes file path.
 	PlaceholderNotesFile = "NOTES_FILE_PLACEHOLDER"
-
-	// PlaceholderPrinciplesFile is replaced with the principles file path.
-	PlaceholderPrinciplesFile = "PRINCIPLES_FILE_PLACEHOLDER"
 )
 
 // TemplateWorkflowContext provides continuous workflow context.
@@ -26,50 +23,6 @@ This is part of a continuous development loop where work happens incrementally a
 **Project Completion Signal**: If you determine that not just your current task but the ENTIRE project goal is fully complete (nothing more to be done on the overall goal), only include the exact phrase "COMPLETION_SIGNAL_PLACEHOLDER" in your response. Only use this when absolutely certain that the whole project is finished, not just your individual task. We will stop working on this project when multiple developers independently determine that the project is complete.
 
 ## PRIMARY GOAL`
-
-// TemplatePrincipleCollection prompts for principle collection on first run.
-const TemplatePrincipleCollection = `## PRINCIPLE COLLECTION REQUIRED
-
-Before starting the main task, you must collect project principles from the user.
-
-**IMPORTANT**: Use the AskUserQuestion tool to ask the following questions:
-
-### Step 1: Project Type
-Ask: "What type of project is this?"
-Options:
-- Startup/MVP - Fast validation, focus on core features
-- Enterprise/Production - Stability first, thorough testing
-- Open Source/Library - Community contributions, API stability
-- Custom - Configure all 18 principles individually
-
-### Step 2: Based on the selected type, ask 2 key questions:
-
-**If Startup/MVP**:
-1. "MVP scope: Minimal features only (1-3) vs Consider expansion (7-10)?"
-2. "Speed vs Quality: Fast release (1-3) vs Quality first (7-10)?"
-
-**If Enterprise/Production**:
-1. "Change size: Large improvements at once (1-3) vs Small changes frequently (7-10)?"
-2. "Technology: New tech actively (1-3) vs Proven only (7-10)?"
-
-**If Open Source/Library**:
-1. "Contributions: Open contributions (1-3) vs Maintainer verified (7-10)?"
-2. "UX: Easy to use (1-3) vs Powerful features (7-10)?"
-
-### Step 3: Generate principles.yaml
-After getting answers, use the Write tool to create ` + "`" + `PRINCIPLES_FILE_PLACEHOLDER` + "`" + ` with:
-- version: "2.3"
-- preset: <selected_type>
-- created_at: <current_date>
-- The two answered principle values
-- Default values for other principles based on preset
-
-Then output: PRINCIPLES_COLLECTED_SUCCESSFULLY
-
----
-
-## MAIN TASK (after principles are collected)
-`
 
 // TemplateDecisionPrinciples provides decision-making guidance.
 // Contains: PRINCIPLES_YAML_PLACEHOLDER

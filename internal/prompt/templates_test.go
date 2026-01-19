@@ -45,16 +45,15 @@ func TestTemplatesNotEmpty(t *testing.T) {
 	t.Parallel()
 
 	templates := map[string]string{
-		"TemplateWorkflowContext":      TemplateWorkflowContext,
-		"TemplatePrincipleCollection":  TemplatePrincipleCollection,
-		"TemplateDecisionPrinciples":   TemplateDecisionPrinciples,
-		"TemplateNotesUpdateExisting":  TemplateNotesUpdateExisting,
-		"TemplateNotesCreateNew":       TemplateNotesCreateNew,
-		"TemplateNotesGuidelines":      TemplateNotesGuidelines,
-		"TemplateNotesContext":         TemplateNotesContext,
-		"TemplateIterationNotes":       TemplateIterationNotes,
-		"TemplateReviewerContext":      TemplateReviewerContext,
-		"TemplateCIFixContext":         TemplateCIFixContext,
+		"TemplateWorkflowContext":     TemplateWorkflowContext,
+		"TemplateDecisionPrinciples":  TemplateDecisionPrinciples,
+		"TemplateNotesUpdateExisting": TemplateNotesUpdateExisting,
+		"TemplateNotesCreateNew":      TemplateNotesCreateNew,
+		"TemplateNotesGuidelines":     TemplateNotesGuidelines,
+		"TemplateNotesContext":        TemplateNotesContext,
+		"TemplateIterationNotes":      TemplateIterationNotes,
+		"TemplateReviewerContext":     TemplateReviewerContext,
+		"TemplateCIFixContext":        TemplateCIFixContext,
 	}
 
 	for name, template := range templates {
@@ -121,19 +120,6 @@ func TestTemplateWorkflowContextContent(t *testing.T) {
 	assert.Contains(t, TemplateWorkflowContext, "PRIMARY GOAL")
 }
 
-func TestTemplatePrincipleCollectionContent(t *testing.T) {
-	t.Parallel()
-
-	// Verify key content from bash script
-	assert.Contains(t, TemplatePrincipleCollection, "PRINCIPLE COLLECTION REQUIRED")
-	assert.Contains(t, TemplatePrincipleCollection, "AskUserQuestion")
-	assert.Contains(t, TemplatePrincipleCollection, "Project Type")
-	assert.Contains(t, TemplatePrincipleCollection, "Startup/MVP")
-	assert.Contains(t, TemplatePrincipleCollection, "Enterprise/Production")
-	assert.Contains(t, TemplatePrincipleCollection, "Open Source/Library")
-	assert.Contains(t, TemplatePrincipleCollection, "PRINCIPLES_COLLECTED_SUCCESSFULLY")
-}
-
 func TestTemplateDecisionPrinciplesContent(t *testing.T) {
 	t.Parallel()
 
@@ -170,7 +156,6 @@ func TestTemplatesDoNotContainUnwantedCharacters(t *testing.T) {
 
 	templates := []string{
 		TemplateWorkflowContext,
-		TemplatePrincipleCollection,
 		TemplateDecisionPrinciples,
 		TemplateNotesUpdateExisting,
 		TemplateNotesCreateNew,

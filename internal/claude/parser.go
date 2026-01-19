@@ -67,6 +67,7 @@ func (p *Parser) Parse(r io.Reader) (*ParsedResult, error) {
 			result.ResultText = msg.Result
 			result.TotalCostUSD = msg.TotalCostUSD
 			result.IsError = msg.IsError
+			result.SessionID = msg.SessionID
 		}
 	}
 

@@ -201,3 +201,107 @@ func TestLoadExampleFilesValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveToFile(t *testing.T) {
+	t.Run("saves valid principles", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "principles.yaml")
+
+		p := DefaultPrinciples(PresetStartup)
+		p.CreatedAt = "2026-01-19"
+
+		err := SaveToFile(path, p)
+		require.NoError(t, err)
+
+		// Verify file was created and can be loaded
+		loaded, loadErr := LoadFromFile(path)
+		require.NoError(t, loadErr)
+		assert.Equal(t, PresetStartup, loaded.Preset)
+		assert.Equal(t, "2.3", loaded.Version)
+		assert.Equal(t, "2026-01-19", loaded.CreatedAt)
+	})
+
+	t.Run("creates parent directories", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "nested", "dir", "principles.yaml")
+
+		p := DefaultPrinciples(PresetEnterprise)
+		p.CreatedAt = "2026-01-19"
+
+		err := SaveToFile(path, p)
+		require.NoError(t, err)
+
+		// Verify file was created
+		_, statErr := os.Stat(path)
+		assert.NoError(t, statErr)
+	})
+
+	t.Run("overwrites existing file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "principles.yaml")
+
+		// Write initial file
+		p1 := DefaultPrinciples(PresetStartup)
+		p1.CreatedAt = "2026-01-01"
+		err := SaveToFile(path, p1)
+		require.NoError(t, err)
+
+		// Overwrite with different preset
+		p2 := DefaultPrinciples(PresetEnterprise)
+		p2.CreatedAt = "2026-01-19"
+		err = SaveToFile(path, p2)
+		require.NoError(t, err)
+
+		// Verify new content
+		loaded, loadErr := LoadFromFile(path)
+		require.NoError(t, loadErr)
+		assert.Equal(t, PresetEnterprise, loaded.Preset)
+		assert.Equal(t, "2026-01-19", loaded.CreatedAt)
+	})
+
+	t.Run("preserves all fields", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "principles.yaml")
+
+		p := &Principles{
+			Version:   "2.3",
+			Preset:    PresetOpenSource,
+			CreatedAt: "2026-01-19",
+			Layer0: Layer0{
+				TrustArchitecture: 1,
+				CurationModel:     2,
+				ScopePhilosophy:   3,
+				MonetizationModel: 4,
+				PrivacyPosture:    5,
+				UXPhilosophy:      6,
+				AuthorityStance:   7,
+				Auditability:      8,
+				Interoperability:  9,
+			},
+			Layer1: Layer1{
+				SpeedCorrectness:      10,
+				InnovationStability:   9,
+				BlastRadius:           8,
+				ClarityOfIntent:       7,
+				ReversibilityPriority: 6,
+				SecurityPosture:       5,
+				UrgencyTiers:          4,
+				CostEfficiency:        3,
+				MigrationBurden:       2,
+			},
+		}
+
+		err := SaveToFile(path, p)
+		require.NoError(t, err)
+
+		loaded, loadErr := LoadFromFile(path)
+		require.NoError(t, loadErr)
+
+		// Verify all fields
+		assert.Equal(t, p.Version, loaded.Version)
+		assert.Equal(t, p.Preset, loaded.Preset)
+		assert.Equal(t, p.CreatedAt, loaded.CreatedAt)
+		assert.Equal(t, p.Layer0, loaded.Layer0)
+		assert.Equal(t, p.Layer1, loaded.Layer1)
+	})
+}

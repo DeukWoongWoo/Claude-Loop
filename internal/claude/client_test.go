@@ -230,36 +230,81 @@ func TestClient_ImplementsClaudeClient(t *testing.T) {
 	_ = NewClient(nil)
 }
 
-func TestClient_ExecuteInteractive_Success(t *testing.T) {
-	// Use a simple echo command to simulate interactive execution
-	mockExec := &MockExecutor{Script: "", ExitCode: 0}
+func TestClient_ExecuteWithSession_Success(t *testing.T) {
+	output := `{"type":"assistant","message":{"content":[{"type":"text","text":"Hello!"}]}}
+{"type":"result","result":"Done","total_cost_usd":0.05,"is_error":false,"session_id":"test-session-123"}
+`
+	mockExec := &MockExecutor{Script: output, ExitCode: 0}
 
 	client := NewClient(&ClientOptions{
 		ClaudePath: "echo",
 		Executor:   mockExec,
 	})
 
-	err := client.ExecuteInteractive(context.Background(), "test prompt")
+	result, err := client.ExecuteWithSession(context.Background(), "test prompt", "")
 
 	require.NoError(t, err)
+	assert.Equal(t, "Hello!", result.Output)
+	assert.Equal(t, "test-session-123", result.SessionID)
+	assert.InDelta(t, 0.05, result.Cost, 0.001)
 }
 
-func TestClient_ExecuteInteractive_Error(t *testing.T) {
-	mockExec := &MockExecutor{Script: "", ExitCode: 1}
+func TestClient_ExecuteWithSession_WithResume(t *testing.T) {
+	output := `{"type":"assistant","message":{"content":[{"type":"text","text":"Resumed session!"}]}}
+{"type":"result","result":"Done","total_cost_usd":0.02,"is_error":false,"session_id":"test-session-123"}
+`
+	mockExec := &MockExecutor{Script: output, ExitCode: 0}
 
 	client := NewClient(&ClientOptions{
 		Executor: mockExec,
 	})
 
-	err := client.ExecuteInteractive(context.Background(), "test prompt")
+	result, err := client.ExecuteWithSession(context.Background(), "user answer", "test-session-123")
 
-	require.Error(t, err)
-	var claudeErr *ClaudeError
-	assert.ErrorAs(t, err, &claudeErr)
-	assert.Equal(t, "interactive claude execution failed", claudeErr.Message)
+	require.NoError(t, err)
+	assert.Equal(t, "Resumed session!", result.Output)
+	assert.Equal(t, "test-session-123", result.SessionID)
 }
 
-func TestClient_ExecuteInteractive_ContextCancellation(t *testing.T) {
+func TestClient_ExecuteWithSession_Error(t *testing.T) {
+	output := `{"type":"result","result":"API error occurred","total_cost_usd":0.01,"is_error":true}
+`
+	mockExec := &MockExecutor{Script: output, ExitCode: 1}
+
+	client := NewClient(&ClientOptions{
+		Executor: mockExec,
+	})
+
+	result, err := client.ExecuteWithSession(context.Background(), "test prompt", "")
+
+	assert.Nil(t, result)
+	require.Error(t, err)
+
+	var claudeErr *ClaudeError
+	assert.ErrorAs(t, err, &claudeErr)
+	assert.Equal(t, "API error occurred", claudeErr.ResultText)
+}
+
+func TestClient_ExecuteWithSession_IsErrorOnExitZero(t *testing.T) {
+	output := `{"type":"result","result":"Soft error","total_cost_usd":0.01,"is_error":true}
+`
+	mockExec := &MockExecutor{Script: output, ExitCode: 0}
+
+	client := NewClient(&ClientOptions{
+		Executor: mockExec,
+	})
+
+	result, err := client.ExecuteWithSession(context.Background(), "test prompt", "")
+
+	assert.Nil(t, result)
+	require.Error(t, err)
+
+	var claudeErr *ClaudeError
+	assert.ErrorAs(t, err, &claudeErr)
+	assert.Equal(t, "Soft error", claudeErr.ResultText)
+}
+
+func TestClient_ExecuteWithSession_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
@@ -269,49 +314,24 @@ func TestClient_ExecuteInteractive_ContextCancellation(t *testing.T) {
 	})
 	client.opts.Executor = &DefaultExecutor{}
 
-	err := client.ExecuteInteractive(ctx, "10") // sleep 10 seconds
+	_, err := client.ExecuteWithSession(ctx, "10", "") // sleep 10 seconds
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
 
-func TestFilterInteractiveFlags(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    []string
-		expected []string
-	}{
-		{
-			name:     "empty flags",
-			input:    []string{},
-			expected: nil,
-		},
-		{
-			name:     "no output-format",
-			input:    []string{"--dangerously-skip-permissions", "--verbose"},
-			expected: []string{"--dangerously-skip-permissions", "--verbose"},
-		},
-		{
-			name:     "filter output-format with value",
-			input:    []string{"--dangerously-skip-permissions", "--output-format", "stream-json", "--verbose"},
-			expected: []string{"--dangerously-skip-permissions", "--verbose"},
-		},
-		{
-			name:     "filter output-format=value style",
-			input:    []string{"--dangerously-skip-permissions", "--output-format=stream-json", "--verbose"},
-			expected: []string{"--dangerously-skip-permissions", "--verbose"},
-		},
-		{
-			name:     "only output-format",
-			input:    []string{"--output-format", "json"},
-			expected: nil,
-		},
-	}
+func TestClient_ExecuteWithSession_NoSessionID(t *testing.T) {
+	output := `{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}
+{"type":"result","result":"Done","is_error":false}
+`
+	mockExec := &MockExecutor{Script: output, ExitCode: 0}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := filterInteractiveFlags(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	client := NewClient(&ClientOptions{
+		Executor: mockExec,
+	})
+
+	result, err := client.ExecuteWithSession(context.Background(), "test", "")
+
+	require.NoError(t, err)
+	assert.Empty(t, result.SessionID)
 }

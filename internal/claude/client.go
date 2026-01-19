@@ -3,7 +3,6 @@ package claude
 import (
 	"bytes"
 	"context"
-	"os"
 	"os/exec"
 	"time"
 
@@ -82,142 +81,121 @@ func NewClient(opts *ClientOptions) *Client {
 	}
 }
 
-// Execute implements loop.ClaudeClient interface.
-// It runs the claude CLI with the given prompt and returns the result.
-func (c *Client) Execute(ctx context.Context, prompt string) (*loop.IterationResult, error) {
-	startTime := time.Now()
+// execResult holds the result of running a command.
+type execResult struct {
+	parsed *ParsedResult
+	stderr string
+}
 
-	// Build command arguments
-	args := []string{"-p", prompt}
-	args = append(args, c.opts.AdditionalFlags...)
-
-	// Create command
+// runCommand executes the claude CLI with the given arguments and returns the parsed result.
+// This is the common execution logic shared by Execute and ExecuteWithSession.
+func (c *Client) runCommand(ctx context.Context, args []string) (*execResult, error) {
 	cmd := c.opts.Executor.CommandContext(ctx, c.opts.ClaudePath, args...)
 
-	// Get stdout pipe for streaming
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, &ClaudeError{Message: "failed to create stdout pipe", Err: err}
 	}
 
-	// Capture stderr for error context
 	var stderrBuf bytes.Buffer
 	cmd.Stderr = &stderrBuf
 
-	// Start the command
 	if err := cmd.Start(); err != nil {
 		return nil, &ClaudeError{Message: "failed to start claude", Err: err}
 	}
 
-	// Parse output stream
 	parsed, parseErr := c.parser.Parse(stdout)
-
-	// Wait for command to complete
 	cmdErr := cmd.Wait()
+	stderr := stderrBuf.String()
 
-	duration := time.Since(startTime)
-
-	// Handle parse error
 	if parseErr != nil {
 		return nil, &ClaudeError{
 			Message: "failed to parse output",
 			Err:     parseErr,
-			Stderr:  stderrBuf.String(),
+			Stderr:  stderr,
 		}
 	}
 
-	// Handle command error
-	if cmdErr != nil {
-		// Check if it's a context cancellation
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-
-		// Check for is_error in JSON response
-		if parsed != nil && parsed.IsError {
-			return nil, &ClaudeError{
-				Message:    "claude returned error",
-				ResultText: parsed.ResultText,
-				Stderr:     stderrBuf.String(),
-			}
-		}
-
-		return nil, &ClaudeError{
-			Message: "claude exited with error",
-			Err:     cmdErr,
-			Stderr:  stderrBuf.String(),
-		}
+	if err := c.checkExecutionError(ctx, cmdErr, parsed, stderr); err != nil {
+		return nil, err
 	}
 
-	// Check is_error flag even on exit code 0
-	if parsed.IsError {
-		return nil, &ClaudeError{
-			Message:    "claude returned error",
-			ResultText: parsed.ResultText,
-			Stderr:     stderrBuf.String(),
-		}
-	}
-
-	return &loop.IterationResult{
-		Output:                parsed.Output,
-		Cost:                  parsed.TotalCostUSD,
-		Duration:              duration,
-		CompletionSignalFound: false, // Detected by loop package
-	}, nil
+	return &execResult{parsed: parsed, stderr: stderr}, nil
 }
 
-// ExecuteInteractive runs claude in interactive mode.
-// This connects stdin/stdout/stderr directly to the terminal, allowing
-// Claude to use AskUserQuestion for interactive prompts.
-// Uses --print flag to send an initial prompt while keeping the session interactive.
-func (c *Client) ExecuteInteractive(ctx context.Context, prompt string) error {
-	args := []string{"--print", prompt}
-
-	// Add compatible flags from AdditionalFlags (skip --output-format which breaks interactive)
-	args = append(args, filterInteractiveFlags(c.opts.AdditionalFlags)...)
-
-	// Create command
-	cmd := c.opts.Executor.CommandContext(ctx, c.opts.ClaudePath, args...)
-
-	// Connect to terminal directly for interactive mode
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	// Run and wait for completion
-	if err := cmd.Run(); err != nil {
-		// Check if it's a context cancellation
+// checkExecutionError checks for command and result errors.
+// Returns nil if execution was successful, or an appropriate error otherwise.
+func (c *Client) checkExecutionError(ctx context.Context, cmdErr error, parsed *ParsedResult, stderr string) error {
+	if cmdErr != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		return &ClaudeError{Message: "interactive claude execution failed", Err: err}
+		if parsed != nil && parsed.IsError {
+			return &ClaudeError{
+				Message:    "claude returned error",
+				ResultText: parsed.ResultText,
+				Stderr:     stderr,
+			}
+		}
+		return &ClaudeError{
+			Message: "claude exited with error",
+			Err:     cmdErr,
+			Stderr:  stderr,
+		}
+	}
+
+	if parsed.IsError {
+		return &ClaudeError{
+			Message:    "claude returned error",
+			ResultText: parsed.ResultText,
+			Stderr:     stderr,
+		}
 	}
 
 	return nil
 }
 
-// filterInteractiveFlags removes flags incompatible with interactive mode.
-// In particular, --output-format breaks terminal interaction.
-func filterInteractiveFlags(flags []string) []string {
-	var result []string
-	skipNext := false
-	for _, flag := range flags {
-		if skipNext {
-			skipNext = false
-			continue
-		}
-		// Skip --output-format and its value
-		if flag == "--output-format" {
-			skipNext = true
-			continue
-		}
-		// Skip --output-format=value style
-		if len(flag) > 15 && flag[:15] == "--output-format" {
-			continue
-		}
-		result = append(result, flag)
+// Execute implements loop.ClaudeClient interface.
+// It runs the claude CLI with the given prompt and returns the result.
+func (c *Client) Execute(ctx context.Context, prompt string) (*loop.IterationResult, error) {
+	startTime := time.Now()
+
+	args := []string{"-p", prompt}
+	args = append(args, c.opts.AdditionalFlags...)
+
+	result, err := c.runCommand(ctx, args)
+	if err != nil {
+		return nil, err
 	}
-	return result
+
+	return &loop.IterationResult{
+		Output:                result.parsed.Output,
+		Cost:                  result.parsed.TotalCostUSD,
+		Duration:              time.Since(startTime),
+		CompletionSignalFound: false, // Detected by loop package
+	}, nil
+}
+
+// ExecuteWithSession executes a prompt with optional session resume.
+// Used for multi-turn interactions like principles collection.
+// If sessionID is empty, starts a new session. Otherwise resumes the specified session.
+func (c *Client) ExecuteWithSession(ctx context.Context, prompt string, sessionID string) (*SessionResult, error) {
+	args := []string{"-p", prompt}
+	if sessionID != "" {
+		args = append(args, "--resume", sessionID)
+	}
+	args = append(args, c.opts.AdditionalFlags...)
+
+	result, err := c.runCommand(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SessionResult{
+		Output:    result.parsed.Output,
+		SessionID: result.parsed.SessionID,
+		Cost:      result.parsed.TotalCostUSD,
+	}, nil
 }
 
 // Verify interface compliance at compile time.

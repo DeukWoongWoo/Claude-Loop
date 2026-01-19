@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -77,4 +78,22 @@ func LoadOrDefault(path string, preset Preset) (*Principles, error) {
 func IsLoadError(err error) bool {
 	var le *LoadError
 	return errors.As(err, &le)
+}
+
+// SaveToFile saves Principles to a file path.
+func SaveToFile(path string, p *Principles) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return &LoadError{Path: path, Message: "failed to create directory", Err: err}
+	}
+
+	data, err := yaml.Marshal(p)
+	if err != nil {
+		return &LoadError{Path: path, Message: "failed to marshal YAML", Err: err}
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return &LoadError{Path: path, Message: "failed to write file", Err: err}
+	}
+	return nil
 }

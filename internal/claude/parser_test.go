@@ -165,3 +165,27 @@ func TestNoOpHandler(t *testing.T) {
 	// Should not panic
 	handler.OnText("test")
 }
+
+func TestParser_ParseWithSessionID(t *testing.T) {
+	input := `{"type":"assistant","message":{"content":[{"type":"text","text":"Done."}]}}
+{"type":"result","result":"Task completed","total_cost_usd":0.05,"is_error":false,"session_id":"abc-123-def"}`
+
+	parser := NewParser(nil)
+	result, err := parser.Parse(strings.NewReader(input))
+
+	require.NoError(t, err)
+	assert.Equal(t, "Done.", result.Output)
+	assert.Equal(t, "abc-123-def", result.SessionID)
+	assert.InDelta(t, 0.05, result.TotalCostUSD, 0.0001)
+	assert.False(t, result.IsError)
+}
+
+func TestParser_ParseWithoutSessionID(t *testing.T) {
+	input := `{"type":"result","result":"Done","total_cost_usd":0.01,"is_error":false}`
+
+	parser := NewParser(nil)
+	result, err := parser.Parse(strings.NewReader(input))
+
+	require.NoError(t, err)
+	assert.Empty(t, result.SessionID)
+}

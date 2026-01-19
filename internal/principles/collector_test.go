@@ -5,37 +5,37 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/DeukWoongWoo/claude-loop/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// MockInteractiveClient is a mock implementation of InteractiveClient for testing.
-type MockInteractiveClient struct {
-	ExecuteInteractiveFunc func(ctx context.Context, prompt string) error
-	Calls                  []string
-}
-
-func (m *MockInteractiveClient) ExecuteInteractive(ctx context.Context, prompt string) error {
-	m.Calls = append(m.Calls, prompt)
-	if m.ExecuteInteractiveFunc != nil {
-		return m.ExecuteInteractiveFunc(ctx, prompt)
-	}
-	return nil
-}
-
 func TestNewCollector(t *testing.T) {
 	t.Parallel()
 
-	client := &MockInteractiveClient{}
 	path := "/some/path/principles.yaml"
 
-	collector := NewCollector(client, path)
+	collector := NewCollector(path)
 
 	assert.NotNil(t, collector)
-	assert.Equal(t, client, collector.client)
 	assert.Equal(t, path, collector.principlesPath)
+	assert.Equal(t, os.Stdin, collector.reader)
+}
+
+func TestNewCollectorWithReader(t *testing.T) {
+	t.Parallel()
+
+	path := "/some/path/principles.yaml"
+	reader := strings.NewReader("test")
+
+	collector := NewCollectorWithReader(path, reader)
+
+	assert.NotNil(t, collector)
+	assert.Equal(t, path, collector.principlesPath)
+	assert.Equal(t, reader, collector.reader)
 }
 
 func TestCollector_NeedsCollection(t *testing.T) {
@@ -74,100 +74,137 @@ func TestCollector_NeedsCollection(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		tc := tt // capture loop variable
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			tmpDir := t.TempDir()
 			principlesPath := filepath.Join(tmpDir, "principles.yaml")
 
-			if tt.fileExists {
+			if tc.fileExists {
 				err := os.WriteFile(principlesPath, []byte("version: \"2.3\""), 0644)
 				require.NoError(t, err)
 			}
 
-			client := &MockInteractiveClient{}
-			collector := NewCollector(client, principlesPath)
+			collector := NewCollector(principlesPath)
 
-			result := collector.NeedsCollection(tt.forceReset)
-			assert.Equal(t, tt.expected, result)
+			result := collector.NeedsCollection(tc.forceReset)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
 
-func TestCollector_Collect_Success(t *testing.T) {
+func TestCollector_Collect_Startup(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	principlesPath := filepath.Join(tmpDir, ".claude", "principles.yaml")
 
-	client := &MockInteractiveClient{
-		ExecuteInteractiveFunc: func(ctx context.Context, prompt string) error {
-			// Simulate Claude creating the file
-			dir := filepath.Dir(principlesPath)
-			if err := os.MkdirAll(dir, 0755); err != nil {
-				return err
-			}
-			return os.WriteFile(principlesPath, []byte("version: \"2.3\"\npreset: startup"), 0644)
-		},
-	}
+	// Simulate user input: "1" for startup, "5" for scope, "6" for speed
+	input := "1\n5\n6\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
 
-	collector := NewCollector(client, principlesPath)
 	err := collector.Collect(context.Background())
 
 	require.NoError(t, err)
-	assert.Len(t, client.Calls, 1)
-	assert.Contains(t, client.Calls[0], "PRINCIPLE COLLECTION REQUIRED")
 
-	// Verify file exists
+	// Verify file was created
 	_, statErr := os.Stat(principlesPath)
 	assert.NoError(t, statErr)
+
+	// Load and verify content
+	loaded, loadErr := config.LoadFromFile(principlesPath)
+	require.NoError(t, loadErr)
+	assert.Equal(t, config.PresetStartup, loaded.Preset)
+	assert.Equal(t, 5, loaded.Layer0.ScopePhilosophy)
+	assert.Equal(t, 6, loaded.Layer1.SpeedCorrectness)
 }
 
-func TestCollector_Collect_InteractiveError(t *testing.T) {
+func TestCollector_Collect_Enterprise(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	principlesPath := filepath.Join(tmpDir, "principles.yaml")
 
-	expectedErr := errors.New("claude execution failed")
-	client := &MockInteractiveClient{
-		ExecuteInteractiveFunc: func(ctx context.Context, prompt string) error {
-			return expectedErr
-		},
-	}
+	// Simulate user input: "2" for enterprise, "8" for blast radius, "7" for innovation
+	input := "2\n8\n7\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
 
-	collector := NewCollector(client, principlesPath)
 	err := collector.Collect(context.Background())
 
-	require.Error(t, err)
-	var collectorErr *CollectorError
-	require.ErrorAs(t, err, &collectorErr)
-	assert.Equal(t, "interactive principles collection failed", collectorErr.Message)
-	assert.ErrorIs(t, err, expectedErr)
+	require.NoError(t, err)
+
+	loaded, loadErr := config.LoadFromFile(principlesPath)
+	require.NoError(t, loadErr)
+	assert.Equal(t, config.PresetEnterprise, loaded.Preset)
+	assert.Equal(t, 8, loaded.Layer1.BlastRadius)
+	assert.Equal(t, 7, loaded.Layer1.InnovationStability)
 }
 
-func TestCollector_Collect_FileNotCreated(t *testing.T) {
+func TestCollector_Collect_OpenSource(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	principlesPath := filepath.Join(tmpDir, "principles.yaml")
 
-	// Mock that doesn't create the file
-	client := &MockInteractiveClient{
-		ExecuteInteractiveFunc: func(ctx context.Context, prompt string) error {
-			// Simulate Claude returning without creating the file
-			return nil
-		},
-	}
+	// Simulate user input: "3" for opensource, "4" for curation, "6" for UX
+	input := "3\n4\n6\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
 
-	collector := NewCollector(client, principlesPath)
 	err := collector.Collect(context.Background())
 
-	require.Error(t, err)
-	var collectorErr *CollectorError
-	require.ErrorAs(t, err, &collectorErr)
-	assert.Equal(t, "principles file was not created after collection", collectorErr.Message)
-	assert.Nil(t, collectorErr.Err)
+	require.NoError(t, err)
+
+	loaded, loadErr := config.LoadFromFile(principlesPath)
+	require.NoError(t, loadErr)
+	assert.Equal(t, config.PresetOpenSource, loaded.Preset)
+	assert.Equal(t, 4, loaded.Layer0.CurationModel)
+	assert.Equal(t, 6, loaded.Layer0.UXPhilosophy)
+}
+
+func TestCollector_Collect_DefaultsOnEmpty(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	principlesPath := filepath.Join(tmpDir, "principles.yaml")
+
+	// Simulate user input: empty lines (use defaults)
+	input := "\n\n\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
+
+	err := collector.Collect(context.Background())
+
+	require.NoError(t, err)
+
+	loaded, loadErr := config.LoadFromFile(principlesPath)
+	require.NoError(t, loadErr)
+	// Default should be startup
+	assert.Equal(t, config.PresetStartup, loaded.Preset)
+	// Should use default values
+	assert.Equal(t, 3, loaded.Layer0.ScopePhilosophy) // default for startup
+	assert.Equal(t, 4, loaded.Layer1.SpeedCorrectness) // default for startup
+}
+
+func TestCollector_Collect_InvalidInput(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	principlesPath := filepath.Join(tmpDir, "principles.yaml")
+
+	// Simulate user input: invalid preset, out of range values
+	input := "invalid\nabc\n15\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
+
+	err := collector.Collect(context.Background())
+
+	require.NoError(t, err)
+
+	loaded, loadErr := config.LoadFromFile(principlesPath)
+	require.NoError(t, loadErr)
+	// Should fall back to defaults
+	assert.Equal(t, config.PresetStartup, loaded.Preset)
+	assert.Equal(t, 3, loaded.Layer0.ScopePhilosophy) // default
+	assert.Equal(t, 4, loaded.Layer1.SpeedCorrectness) // default
 }
 
 func TestCollector_Collect_CreatesParentDirectory(t *testing.T) {
@@ -176,14 +213,9 @@ func TestCollector_Collect_CreatesParentDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	principlesPath := filepath.Join(tmpDir, "nested", "dir", "principles.yaml")
 
-	client := &MockInteractiveClient{
-		ExecuteInteractiveFunc: func(ctx context.Context, prompt string) error {
-			// Simulate Claude creating the file (directory should already exist)
-			return os.WriteFile(principlesPath, []byte("version: \"2.3\""), 0644)
-		},
-	}
+	input := "1\n\n\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
 
-	collector := NewCollector(client, principlesPath)
 	err := collector.Collect(context.Background())
 
 	require.NoError(t, err)
@@ -194,28 +226,63 @@ func TestCollector_Collect_CreatesParentDirectory(t *testing.T) {
 	assert.True(t, dirInfo.IsDir())
 }
 
-func TestCollector_Collect_ContextCancellation(t *testing.T) {
+func TestCollector_Collect_ValidNumberRange(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected int
+	}{
+		{"minimum value", "1\n1\n1\n", 1},
+		{"maximum value", "1\n10\n10\n", 10},
+		{"mid value", "1\n5\n5\n", 5},
+		{"below minimum uses default", "1\n0\n0\n", 3}, // default
+		{"above maximum uses default", "1\n11\n11\n", 3}, // default
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			principlesPath := filepath.Join(tmpDir, "principles.yaml")
+
+			collector := NewCollectorWithReader(principlesPath, strings.NewReader(tc.input))
+			err := collector.Collect(context.Background())
+
+			require.NoError(t, err)
+
+			loaded, loadErr := config.LoadFromFile(principlesPath)
+			require.NoError(t, loadErr)
+			assert.Equal(t, tc.expected, loaded.Layer0.ScopePhilosophy)
+		})
+	}
+}
+
+func TestCollector_Collect_PreservesOtherDefaults(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	principlesPath := filepath.Join(tmpDir, "principles.yaml")
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
+	// Only specify the asked questions, others should use defaults
+	input := "1\n7\n8\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
 
-	client := &MockInteractiveClient{
-		ExecuteInteractiveFunc: func(ctx context.Context, prompt string) error {
-			return ctx.Err()
-		},
-	}
+	err := collector.Collect(context.Background())
 
-	collector := NewCollector(client, principlesPath)
-	err := collector.Collect(ctx)
+	require.NoError(t, err)
 
-	require.Error(t, err)
-	var collectorErr *CollectorError
-	require.ErrorAs(t, err, &collectorErr)
-	assert.ErrorIs(t, collectorErr.Err, context.Canceled)
+	loaded, loadErr := config.LoadFromFile(principlesPath)
+	require.NoError(t, loadErr)
+
+	// Check that other defaults are preserved (startup defaults)
+	assert.Equal(t, "2.3", loaded.Version)
+	assert.Equal(t, 7, loaded.Layer0.TrustArchitecture) // startup default
+	assert.Equal(t, 6, loaded.Layer0.CurationModel)     // startup default
+	assert.Equal(t, 7, loaded.Layer1.BlastRadius)       // startup default
 }
 
 func TestCollectorError_Error(t *testing.T) {
@@ -245,9 +312,10 @@ func TestCollectorError_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		tc := tt // capture loop variable
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.expected, tt.err.Error())
+			assert.Equal(t, tc.expected, tc.err.Error())
 		})
 	}
 }
@@ -276,23 +344,24 @@ func TestCollectorError_Unwrap_Nil(t *testing.T) {
 	assert.Nil(t, err.Unwrap())
 }
 
-func TestBuildCollectionPrompt(t *testing.T) {
+func TestCollector_Collect_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
-	prompt := buildCollectionPrompt(".claude/principles.yaml")
+	tmpDir := t.TempDir()
+	principlesPath := filepath.Join(tmpDir, "principles.yaml")
 
-	assert.Contains(t, prompt, "PRINCIPLE COLLECTION REQUIRED")
-	assert.Contains(t, prompt, "AskUserQuestion")
-	assert.Contains(t, prompt, "Project Type")
-	assert.Contains(t, prompt, ".claude/principles.yaml")
-}
+	// Create a cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
-func TestBuildCollectionPrompt_CustomPath(t *testing.T) {
-	t.Parallel()
+	input := "1\n5\n6\n"
+	collector := NewCollectorWithReader(principlesPath, strings.NewReader(input))
 
-	customPath := "custom/path/my-principles.yaml"
-	prompt := buildCollectionPrompt(customPath)
+	err := collector.Collect(ctx)
 
-	assert.Contains(t, prompt, customPath)
-	assert.NotContains(t, prompt, "PRINCIPLES_FILE_PLACEHOLDER")
+	require.Error(t, err)
+	var collectorErr *CollectorError
+	require.ErrorAs(t, err, &collectorErr)
+	assert.Equal(t, "cancelled", collectorErr.Message)
+	assert.ErrorIs(t, collectorErr.Err, context.Canceled)
 }

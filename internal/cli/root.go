@@ -395,11 +395,8 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 	// Check for updates at startup
 	checkForUpdatesAtStartup(ctx, globalFlags)
 
-	// Create Claude client (needed for both principles collection and main loop)
-	claudeClient := claude.NewClient(nil)
-
 	// Load or collect principles
-	loadedPrinciples, err := loadOrCollectPrinciples(ctx, claudeClient, globalFlags)
+	loadedPrinciples, err := loadOrCollectPrinciples(ctx, globalFlags)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -420,6 +417,9 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 			state.Elapsed().Round(time.Second),
 		)
 	}
+
+	// Create Claude client for main loop
+	claudeClient := claude.NewClient(nil)
 
 	// Create and run Executor
 	executor := loop.NewExecutor(loopConfig, claudeClient)
@@ -467,8 +467,8 @@ func NewRootCmdForFlagParsing() *cobra.Command {
 }
 
 // loadOrCollectPrinciples loads existing principles or collects them interactively.
-func loadOrCollectPrinciples(ctx context.Context, client *claude.Client, flags *Flags) (*config.Principles, error) {
-	collector := principles.NewCollector(client, flags.PrinciplesFile)
+func loadOrCollectPrinciples(ctx context.Context, flags *Flags) (*config.Principles, error) {
+	collector := principles.NewCollector(flags.PrinciplesFile)
 
 	if !collector.NeedsCollection(flags.ResetPrinciples) {
 		return config.LoadFromFile(flags.PrinciplesFile)
