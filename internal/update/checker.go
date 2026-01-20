@@ -41,6 +41,13 @@ type ghReleaseResponse struct {
 
 // GetLatestRelease retrieves the latest release from GitHub.
 func (c *Checker) GetLatestRelease(ctx context.Context) (*ReleaseInfo, error) {
+	// Apply timeout if configured
+	if c.opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.opts.Timeout)
+		defer cancel()
+	}
+
 	repoSlug := c.opts.RepoOwner + "/" + c.opts.RepoName
 
 	// Use gh CLI to get latest release
@@ -53,6 +60,10 @@ func (c *Checker) GetLatestRelease(ctx context.Context) (*ReleaseInfo, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		// Check for context deadline exceeded (timeout)
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, NewUpdateError("check", "update check timed out", ctx.Err())
+		}
 		stderrStr := strings.TrimSpace(stderr.String())
 		if strings.Contains(stderrStr, "release not found") ||
 			strings.Contains(stderrStr, "no releases") {

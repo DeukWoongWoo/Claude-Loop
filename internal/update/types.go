@@ -75,6 +75,7 @@ type CheckerOptions struct {
 	RepoName       string
 	CurrentVersion string
 	Executor       CommandExecutor
+	Timeout        time.Duration // Timeout for GitHub API queries (default: 10s)
 }
 
 // DefaultCheckerOptions returns CheckerOptions with defaults.
@@ -84,6 +85,7 @@ func DefaultCheckerOptions(currentVersion string) *CheckerOptions {
 		RepoName:       "claude-loop",
 		CurrentVersion: currentVersion,
 		Executor:       &DefaultExecutor{},
+		Timeout:        10 * time.Second,
 	}
 }
 

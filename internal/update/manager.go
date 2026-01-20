@@ -40,10 +40,15 @@ func (m *Manager) CheckAndUpdate(ctx context.Context) (*UpdateResult, error) {
 
 	// Check for updates
 	m.progress("Checking for updates...")
+	m.progress(fmt.Sprintf("  Querying %s/%s...",
+		m.opts.CheckerOptions.RepoOwner,
+		m.opts.CheckerOptions.RepoName))
+
 	release, isNewer, err := m.checker.CheckForUpdate(ctx)
 	if err != nil {
 		return nil, err
 	}
+	m.progress("  Done")
 
 	if !isNewer {
 		return &UpdateResult{
