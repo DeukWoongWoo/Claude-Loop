@@ -117,11 +117,11 @@ func (c *Collector) askFollowUpQuestions(ctx context.Context, reader *bufio.Read
 			return err
 		}
 	case config.PresetEnterprise:
-		p.Layer1.BlastRadius, err = c.askNumber(ctx, reader, "Change size (1=large, 10=small)", 9)
+		p.Layer1.BlastRadius, err = c.askNumber(ctx, reader, "Change size - how large changes can be (1=large sweeping changes, 10=small incremental changes)", 9)
 		if err != nil {
 			return err
 		}
-		p.Layer1.InnovationStability, err = c.askNumber(ctx, reader, "Tech choice (1=new, 10=proven)", 8)
+		p.Layer1.InnovationStability, err = c.askNumber(ctx, reader, "Tech choice - technology preference (1=new/experimental tech, 10=proven/stable tech)", 8)
 		if err != nil {
 			return err
 		}

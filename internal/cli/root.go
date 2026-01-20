@@ -24,6 +24,14 @@ import (
 // maxDurationStr holds the raw duration string for parsing.
 var maxDurationStr string
 
+// ConsoleStreamHandler implements claude.StreamHandler for real-time output.
+type ConsoleStreamHandler struct{}
+
+// OnText prints text to stdout in real-time.
+func (h *ConsoleStreamHandler) OnText(text string) {
+	fmt.Print(text)
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "claude-loop",
 	Short: "Autonomous AI development loop with 4-Layer Principles Framework",
@@ -65,6 +73,8 @@ OPTIONAL FLAGS:
     --reset-principles            Force re-collection of principles
     --principles-file <path>      Custom principles file path (default: ".claude/principles.yaml")
     --log-decisions               Enable decision logging to .claude/principles-decisions.log
+    --verbose                     Show detailed iteration summaries
+    --stream                      Stream Claude output in real-time
 
 COMMANDS:
     update                        Check for and install the latest version
@@ -292,6 +302,10 @@ func registerFlags(cmd *cobra.Command) {
 	flags.StringVar(&f.PrinciplesFile, "principles-file", ".claude/principles.yaml", "Custom principles file path")
 	flags.BoolVar(&f.LogDecisions, "log-decisions", false, "Enable decision logging")
 
+	// Output control
+	flags.BoolVar(&f.Verbose, "verbose", false, "Show detailed iteration summaries")
+	flags.BoolVar(&f.Stream, "stream", false, "Stream Claude output in real-time")
+
 	// Update management
 	flags.BoolVar(&f.AutoUpdate, "auto-update", false, "Automatically install updates when available")
 	flags.BoolVar(&f.DisableUpdates, "disable-updates", false, "Skip all update checks and prompts")
@@ -405,21 +419,52 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 	// Create loop config from flags
 	loopConfig := ConfigToLoopConfig(globalFlags)
 	loopConfig.Principles = loadedPrinciples
+
+	// Track previous cost for per-iteration cost calculation in verbose mode
+	var previousCost float64
 	loopConfig.OnProgress = func(state *loop.State) {
 		maxRunsStr := "unlimited"
 		if globalFlags.MaxRuns > 0 {
 			maxRunsStr = fmt.Sprintf("%d", globalFlags.MaxRuns)
 		}
-		fmt.Printf("[%d/%s] Cost: $%.4f | Elapsed: %s\n",
-			state.SuccessfulIterations,
-			maxRunsStr,
-			state.TotalCost,
-			state.Elapsed().Round(time.Second),
-		)
+
+		if globalFlags.Verbose {
+			// Detailed output - differentiate success vs failure
+			status := "Complete"
+			if state.ErrorCount > 0 {
+				status = "Failed"
+			}
+			fmt.Printf("\n--- Iteration %d/%s %s ---\n",
+				state.TotalIterations, maxRunsStr, status)
+			fmt.Printf("Cost: $%.4f (Total: $%.4f)\n",
+				state.TotalCost-previousCost, state.TotalCost)
+			fmt.Printf("Elapsed: %s\n", state.Elapsed().Round(time.Second))
+			if state.CompletionSignalCount > 0 {
+				fmt.Printf("Completion signals: %d/%d\n",
+					state.CompletionSignalCount, globalFlags.CompletionThreshold)
+			}
+			if state.ErrorCount > 0 {
+				fmt.Printf("Consecutive errors: %d\n", state.ErrorCount)
+			}
+			fmt.Println()
+		} else {
+			// Default minimal output
+			fmt.Printf("[%d/%s] Cost: $%.4f | Elapsed: %s\n",
+				state.SuccessfulIterations,
+				maxRunsStr,
+				state.TotalCost,
+				state.Elapsed().Round(time.Second),
+			)
+		}
+		previousCost = state.TotalCost
 	}
 
 	// Create Claude client for main loop
-	claudeClient := claude.NewClient(nil)
+	var clientOpts *claude.ClientOptions
+	if globalFlags.Stream {
+		clientOpts = &claude.ClientOptions{StreamHandler: &ConsoleStreamHandler{}}
+	}
+	claudeClient := claude.NewClient(clientOpts)
 
 	// Create and run Executor
 	executor := loop.NewExecutor(loopConfig, claudeClient)

@@ -32,6 +32,8 @@ func TestDefaultFlags(t *testing.T) {
 	assert.False(t, f.ListWorktrees)
 	assert.False(t, f.ResetPrinciples)
 	assert.False(t, f.LogDecisions)
+	assert.False(t, f.Verbose)
+	assert.False(t, f.Stream)
 	assert.False(t, f.AutoUpdate)
 	assert.False(t, f.DisableUpdates)
 }
@@ -184,6 +186,14 @@ func TestFlagParsing(t *testing.T) {
 			args: []string{"-p", "x", "-m", "1", "--disable-updates"},
 			validate: func(t *testing.T) {
 				assert.True(t, globalFlags.DisableUpdates)
+			},
+		},
+		{
+			name: "output control flags",
+			args: []string{"-p", "x", "-m", "1", "--verbose", "--stream"},
+			validate: func(t *testing.T) {
+				assert.True(t, globalFlags.Verbose)
+				assert.True(t, globalFlags.Stream)
 			},
 		},
 	}

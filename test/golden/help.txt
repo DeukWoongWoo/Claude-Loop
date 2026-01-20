@@ -36,6 +36,8 @@ OPTIONAL FLAGS:
     --reset-principles            Force re-collection of principles
     --principles-file <path>      Custom principles file path (default: ".claude/principles.yaml")
     --log-decisions               Enable decision logging to .claude/principles-decisions.log
+    --verbose                     Show detailed iteration summaries
+    --stream                      Stream Claude output in real-time
 
 COMMANDS:
     update                        Check for and install the latest version

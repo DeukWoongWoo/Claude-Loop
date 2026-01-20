@@ -45,6 +45,10 @@ type Flags struct {
 	PrinciplesFile  string // --principles-file: Custom principles file path
 	LogDecisions    bool   // --log-decisions: Enable decision logging
 
+	// Output control
+	Verbose bool // --verbose: Show detailed iteration summaries
+	Stream  bool // --stream: Stream Claude output in real-time
+
 	// Update management
 	AutoUpdate     bool // --auto-update: Auto-install updates
 	DisableUpdates bool // --disable-updates: Skip update checks
