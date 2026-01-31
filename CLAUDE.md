@@ -93,6 +93,13 @@ internal/
     validator.go            # PRD validation (goals, requirements, success criteria)
     generator.go            # DefaultGenerator implementation
     *_test.go               # Unit tests (100% coverage)
+  architecture/
+    types.go                # Architecture extended type, Config, Generator interface
+    errors.go               # ArchitectureError, ValidationError types
+    parser.go               # Claude output parsing (Components, Dependencies, FileStructure, TechDecisions)
+    validator.go            # Architecture validation (components, file structure, tech decisions)
+    generator.go            # DefaultGenerator implementation
+    *_test.go               # Unit tests (97% coverage)
   planner/
     types.go                # Plan, PRD, Architecture, TaskGraph, Task types
     errors.go               # PlannerError type
