@@ -108,6 +108,16 @@ internal/
     phase.go                # PlanningPhase interface
     persistence.go          # FilePersistence (atomic writes, YAML serialization)
     *_test.go               # Unit tests
+  decomposer/
+    types.go                # Extended Task, TaskGraph, Config, Decomposer interface
+    errors.go               # DecomposerError, ValidationError, GraphError types
+    parser.go               # Claude output parsing (regex-based task extraction)
+    validator.go            # Task validation (ID format, uniqueness, dependencies)
+    graph.go                # DependencyGraph with DFS cycle detection, Kahn's algorithm
+    scheduler.go            # Topological sort scheduling
+    decomposer.go           # DefaultDecomposer (Architecture → TaskGraph orchestration)
+    taskfile.go             # Hybrid storage (YAML frontmatter + Markdown body)
+    *_test.go               # Unit tests (90% coverage)
   update/
     types.go                # Core types, options (DownloaderOptions, InstallerOptions)
     errors.go               # UpdateError, VersionError, ChecksumError
