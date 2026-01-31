@@ -25,7 +25,14 @@ import (
 var maxDurationStr string
 
 // ConsoleStreamHandler implements claude.ToolStreamHandler for real-time output.
-type ConsoleStreamHandler struct{}
+type ConsoleStreamHandler struct {
+	formatter *ToolFormatter
+}
+
+// NewConsoleStreamHandler creates a new handler with formatter.
+func NewConsoleStreamHandler() *ConsoleStreamHandler {
+	return &ConsoleStreamHandler{formatter: NewToolFormatter()}
+}
 
 // OnText prints text to stdout in real-time.
 func (h *ConsoleStreamHandler) OnText(text string) {
@@ -34,7 +41,8 @@ func (h *ConsoleStreamHandler) OnText(text string) {
 
 // OnToolUse prints tool invocation to stdout.
 func (h *ConsoleStreamHandler) OnToolUse(name string, input string) {
-	fmt.Printf("\n[Tool: %s] %s\n", name, truncateString(input, 100))
+	formatted := h.formatter.FormatToolUse(name, input)
+	fmt.Printf("\n[Tool: %s] %s\n", name, formatted)
 }
 
 // OnToolResult prints tool result to stdout.
@@ -43,18 +51,8 @@ func (h *ConsoleStreamHandler) OnToolResult(content string, isError bool) {
 	if isError {
 		prefix = "[Error]"
 	}
-	fmt.Printf("%s %s\n", prefix, truncateString(content, 200))
-}
-
-// truncateString truncates a string to maxLen characters, adding "..." if truncated.
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return s[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
+	formatted := h.formatter.FormatToolResult(content)
+	fmt.Printf("%s %s\n", prefix, formatted)
 }
 
 var rootCmd = &cobra.Command{
@@ -487,7 +485,7 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 	// Create Claude client for main loop
 	var clientOpts *claude.ClientOptions
 	if globalFlags.Stream {
-		clientOpts = &claude.ClientOptions{StreamHandler: &ConsoleStreamHandler{}}
+		clientOpts = &claude.ClientOptions{StreamHandler: NewConsoleStreamHandler()}
 	}
 	claudeClient := claude.NewClient(clientOpts)
 
