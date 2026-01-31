@@ -18,7 +18,7 @@ You are a code reviewer agent. Follow this process:
 
 For each topic group (or all changes if not splitting):
 1. Craft a focused prompt describing the specific changes to review
-2. Execute: `codex exec -m gpt-5.1-codex "<review prompt for this topic>"`
+2. Execute: `codex exec -m gpt-5.2-codex "<review prompt for this topic>"`
 3. The prompt should include:
     Review checklist:
     - Code is simple and readable
