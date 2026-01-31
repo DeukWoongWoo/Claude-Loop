@@ -86,6 +86,21 @@ internal/
     logger.go               # DecisionLogger (.claude/principles-decisions.log)
     council.go              # DefaultCouncil implementation
     *_test.go               # Unit tests (93% coverage)
+  prd/
+    types.go                # PRD extended type, Config, Generator interface
+    errors.go               # PRDError, ValidationError types
+    parser.go               # Claude output parsing (regex-based section extraction)
+    validator.go            # PRD validation (goals, requirements, success criteria)
+    generator.go            # DefaultGenerator implementation
+    *_test.go               # Unit tests (100% coverage)
+  planner/
+    types.go                # Plan, PRD, Architecture, TaskGraph, Task types
+    errors.go               # PlannerError type
+    prompt.go               # PromptBuilder for planning phases
+    runner.go               # PhaseRunner (orchestrates PRD → Architecture → Tasks)
+    phase.go                # PlanningPhase interface
+    persistence.go          # FilePersistence (atomic writes, YAML serialization)
+    *_test.go               # Unit tests
   update/
     types.go                # Core types, options (DownloaderOptions, InstallerOptions)
     errors.go               # UpdateError, VersionError, ChecksumError
