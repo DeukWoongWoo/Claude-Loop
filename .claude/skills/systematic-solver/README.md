@@ -1,44 +1,54 @@
-# Systematic Problem Solver
+# Systematic Solver
 
-Systematic problem-solving and code modification framework ensuring root cause analysis and regression prevention.
+A framework that ensures thorough, non-patchwork solutions for code modifications and debugging tasks through root cause analysis and impact assessment.
 
 ## Usage
 
-Invoke this skill when debugging or modifying code.
+Invoke this skill for debugging, bug fixes, or code modifications that could affect other parts of the codebase.
 
 **Trigger phrases:**
-- "Fix this bug"
-- "Debug this issue"
-- "Refactor this code"
-- "Optimize performance"
-- "Troubleshoot this problem"
+- "Fix bug"
+- "Debug issue"
+- "Solve problem"
+- "Refactor code"
+
+**With arguments:**
+```
+/systematic-solver                     # Analyze current issue
+/systematic-solver "error message"     # Investigate specific error
+```
 
 ## Description
 
-This skill ensures thorough, non-patchwork solutions by following the ARIA workflow. Instead of applying quick fixes to symptoms, it guides you through proper root cause analysis and impact assessment.
+This skill performs systematic problem-solving using the **ARIA Workflow**:
 
-**Key capabilities:**
-- Complexity assessment to determine workflow depth (simple vs complex)
-- Root cause analysis using the 5 Whys technique
-- Impact analysis across codebase dependencies
-- Regression prevention with tests and similar code review
+1. **ASSESS** - Determine complexity (Simple → fix immediately, Complex → full analysis)
+2. **ROOT CAUSE** - Find the actual cause using "5 Whys" technique with code evidence
+3. **IMPACT** - Analyze dependencies, risk level, and test coverage
+4. **ACT** - Implement fix with regression prevention
+
+**Core Principle**: Fix the root cause, not the symptom. A null check without fixing why the value is null is a patchwork fix.
 
 ## Workflow
 
-When invoked, the skill follows the ARIA process:
+When invoked, the skill:
 
-1. **Assess**: Evaluate complexity - simple fixes proceed immediately, complex issues continue
-2. **Root Cause**: Apply 5 Whys technique, trace execution paths, validate with code evidence
-3. **Impact**: Analyze dependencies, check callers/callees, assess risk level, review test coverage
-4. **Act**: Implement fix with regression prevention, check for similar issues, verify no new problems
+1. **Assess Complexity**: Simple issues get immediate fixes, complex ones get full analysis
+2. **Find Root Cause**: Apply "5 Whys" with code evidence for each step
+3. **Analyze Impact**: Trace callers/callees, assess risk, check test coverage
+4. **Select Approach**: Choose THE best solution based on project context
+5. **Act with Prevention**: Implement fix and add regression tests
 
-**Output**: Implementation summary containing:
+**Output**: Implementation summary with:
 - Root cause statement with evidence
-- Impact report with risk assessment
-- Changes made with explanations
-- Regression prevention checklist
-- Verification steps
+- Impact report (direct/indirect files, tests, risk level)
+- Changes made with reasoning
+- Regression prevention measures
 
-## Prerequisites
+## Reference Documents
 
-No special setup required.
+| Document | Purpose |
+|----------|---------|
+| `references/complexity-assessment.md` | Detailed criteria for complexity tiers |
+| `references/root-cause-patterns.md` | Common root cause patterns and examples |
+| `references/impact-analysis-guide.md` | Comprehensive impact analysis checklist |

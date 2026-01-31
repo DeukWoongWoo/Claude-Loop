@@ -1,6 +1,6 @@
 ---
 name: systematic-solver
-description: Systematic problem-solving and code modification framework. Use this skill when debugging, fixing bugs, resolving errors, troubleshooting, refactoring, optimizing performance, modifying code, investigating issues, diagnosing problems, patching code, or correcting behavior. Ensures root cause analysis, impact assessment, and regression prevention instead of patchwork fixes.
+description: Systematic problem-solving and code modification framework. Analyzes, diagnoses, fixes, and prevents code issues through root cause analysis and impact assessment. Use for any debugging or code modification-related task.
 ---
 
 # Systematic Problem Solver

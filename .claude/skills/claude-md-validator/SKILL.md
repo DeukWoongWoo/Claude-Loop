@@ -1,6 +1,6 @@
 ---
 name: claude-md-validator
-description: Validate and improve CLAUDE.md files following best practices. Use when user asks to review, validate, check, or improve CLAUDE.md files, or mentions CLAUDE.md quality.
+description: CLAUDE.md configuration workflow. Validates, improves, and optimizes CLAUDE.md files against best practices. Use for any CLAUDE.md-related task.
 ---
 
 # CLAUDE.md Validator
@@ -17,26 +17,28 @@ Analyze CLAUDE.md files against best practices and provide actionable improvemen
 ## Validation Checklist
 
 ### Structure (Critical)
-- [ ] Total lines <= 100 (token efficiency)
+- [ ] Total lines <= 250 (token efficiency for complex monorepos)
 - [ ] Uses declarative bullet points, not narrative paragraphs
 - [ ] Has clear section headers
+- [ ] Uses `@import` syntax for detailed patterns (e.g., `@documents/claude/patterns/*.md`)
 
 ### Content Quality
-- [ ] Project-specific information only (not general language/framework knowledge)
+- [ ] Project-specific information only (not general Python/FastAPI knowledge)
 - [ ] Tech stack with exact versions
 - [ ] Key file locations with clickable links
 - [ ] Common commands documented
-- [ ] Coding patterns and conventions
+- [ ] Coding patterns and conventions (Pydantic, type hints, import order)
 
 ### What to Exclude
 - [ ] No general documentation available elsewhere
 - [ ] No time-sensitive information (dates, deadlines)
 - [ ] No redundant information
+- [ ] No detailed implementation patterns (move to `documents/claude/patterns/`)
 
 ### Format
 - [ ] Consistent terminology throughout
 - [ ] Code examples are minimal and focused
-- [ ] Tables used for structured data (API routes, commands)
+- [ ] Tables used for structured data (layer responsibilities, commands)
 
 ## Output Format
 
@@ -44,7 +46,7 @@ Analyze CLAUDE.md files against best practices and provide actionable improvemen
 ## CLAUDE.md Validation Report
 
 ### Summary
-- Total lines: X (target: <= 100)
+- Total lines: X (target: <= 250)
 - Status: PASS / NEEDS IMPROVEMENT
 
 ### Issues Found
@@ -58,15 +60,35 @@ Analyze CLAUDE.md files against best practices and provide actionable improvemen
 ## Examples
 
 ### Good: Declarative Style
-```markdown
-- Use `'use client'` for interactive components
-- No `any` type - use proper types or `unknown`
+```python
+# Import order
+# 1. Standard library
+# 2. Third-party
+# 3. Local
 ```
 
 ### Bad: Narrative Style
 ```markdown
-When creating components, you should consider whether they need
-client-side interactivity. If so, add the 'use client' directive...
+When importing modules, you should consider the order carefully.
+First import standard library modules, then third-party packages...
+```
+
+### Good: Pattern Reference
+```markdown
+## Framework Development Patterns
+
+상세 구현 패턴은 필요할 때 참조:
+
+- **API 엔드포인트 추가**: @documents/claude/patterns/api-endpoint.md
+- **CLI 명령어 추가**: @documents/claude/patterns/cli-command.md
+```
+
+### Bad: Inline Pattern Details
+```markdown
+## Adding API Endpoint
+
+1. Create router in `alphaverse/server/api/v1/<feature>.py`:
+[50+ lines of code examples...]
 ```
 
 ## Additional Reference

@@ -1,6 +1,6 @@
 ---
 name: llm-council
-description: Multi-LLM opinion aggregator that queries Codex (OpenAI), Gemini (Google), and Claude (Anthropic) for expert opinions, then synthesizes responses. Use for diverse AI perspectives, comparing approaches, technical decisions, architecture choices and planning.
+description: Multi-LLM opinion aggregation workflow. Queries, synthesizes, and compares expert opinions from Codex (OpenAI), Gemini (Google), and Claude (Anthropic). Use for any multi-AI perspective-related task.
 ---
 
 # LLM Council - Multi-LLM Opinion Aggregator
@@ -58,3 +58,5 @@ Deliver the final answer with:
 - **Final recommendation**: Based on strongest arguments
 - **Remaining uncertainties**: What couldn't be resolved
 - **Confidence level**: Overall confidence in the recommendation
+
+

@@ -8,7 +8,7 @@ CLAUDE.md is prepended to every prompt. Bloated files:
 - Add noise that obscures important instructions
 - Reduce Claude's ability to follow directions
 
-**Target: Under 100 lines**
+**Target: Under 250 lines** (for complex monorepos like Alphaverse)
 
 ### 2. Write for Claude, Not Humans
 Claude already knows general programming. Only include:
@@ -21,68 +21,95 @@ Claude already knows general programming. Only include:
 
 | Style | Example |
 |-------|---------|
-| Good | `- Always add dark mode variants` |
-| Bad | `When styling components, you should remember to add dark mode variants because...` |
+| Good | `- Type hints required, use Python 3.10+ union syntax (X \| Y)` |
+| Bad | `When writing functions, you should remember to add type hints because...` |
+
+### 4. Reference Over Inline
+
+| Approach | When to Use |
+|----------|-------------|
+| `@import` reference | Detailed patterns, step-by-step guides |
+| Inline in CLAUDE.md | Quick rules, conventions, key locations |
 
 ## Required Sections
 
-### Minimal CLAUDE.md Structure
+### Minimal CLAUDE.md Structure (Alphaverse)
 ```markdown
 # Project Name
 One-line description.
 
-## Tech Stack
-- Framework: Name version
-- Styling: Name version
+## Quick Reference
+- Common commands
+- Environment variables
 
-## Project Structure
-[Abbreviated tree]
+## Architecture Overview
+- Directory structure (abbreviated)
+- Layer responsibilities table
 
-## Commands
-[Essential scripts only]
+## Code Conventions
+- Style rules
+- Naming conventions
+- Import order
 
-## Key Patterns
-[3-5 critical conventions]
+## Framework Development Patterns
+- @import references to detailed patterns
 
-## Common Tasks
-[Step-by-step for frequent operations]
+## Project Guidelines
+- Placement rules
+- Database access patterns
+
+## Key Files
+- Entry points
+- Configuration files
+
+## References
+- @import to usage guides and patterns
 ```
 
 ## Content Guidelines
 
 ### Include
-- Exact dependency versions
+- Exact dependency versions (Python 3.11, FastAPI 0.104.0)
 - File path conventions with examples
-- API patterns unique to this project
+- Pydantic schema patterns unique to this project
 - Environment variable names
-- Non-obvious component relationships
+- Layer responsibilities and placement rules
+- Database client usage (Snowflake, PostgreSQL, DuckDB)
 
 ### Exclude
-- How React/Next.js/TypeScript works
+- How Python/FastAPI/Pydantic works
 - General best practices (SOLID, DRY, etc.)
 - Information in official docs
-- Detailed API references (use separate files)
-- Complete type definitions
+- Detailed implementation patterns (use `@documents/claude/patterns/`)
+- Complete Pydantic model definitions
 
 ## Hierarchical Organization
 
 ```
-~/.claude/CLAUDE.md           # Personal global preferences
-./CLAUDE.md                    # Project root (commit to git)
-./src/tests/CLAUDE.md          # Subdirectory-specific rules
+~/.claude/CLAUDE.md                    # Personal global preferences
+./CLAUDE.md                            # Project root (commit to git)
+./documents/claude/
+  usage-guide.md                       # Scenario/asset developer guide
+  patterns/
+    api-endpoint.md                    # API endpoint pattern
+    cli-command.md                     # CLI command pattern
+    core-schema.md                     # Core schema pattern
 ```
 
-Most specific (nested) file takes precedence.
+Use `@import` syntax to reference:
+```markdown
+- **API 엔드포인트 추가**: @documents/claude/patterns/api-endpoint.md
+```
 
 ## Anti-Patterns
 
-| Anti-Pattern | Why It's Bad |
-|--------------|--------------|
-| 500+ lines | Token waste, noise |
-| "You should consider..." | Narrative, not declarative |
-| Complete TypeScript interfaces | Put in separate file |
-| General coding standards | Claude already knows |
-| Version history | Not actionable |
+| Anti-Pattern | Why It's Bad | Solution |
+|--------------|--------------|----------|
+| 500+ lines | Token waste, noise | Split into `@import` references |
+| "You should consider..." | Narrative, not declarative | Convert to imperative bullets |
+| Complete Pydantic models | Put in separate file | Reference schema files |
+| General Python knowledge | Claude already knows | Remove |
+| Inline step-by-step patterns | Too verbose | Move to `documents/claude/patterns/` |
 
 ## Maintenance
 
@@ -96,18 +123,25 @@ Most specific (nested) file takes precedence.
 - It duplicates official documentation
 - Claude consistently follows it without reminder
 
+### Move to Pattern Files When
+- Content exceeds 20 lines of code examples
+- It's a step-by-step implementation guide
+- Multiple files need to be created/modified
+
 ## Validation Criteria
 
 ### Pass Criteria
-- [ ] <= 100 lines
+- [ ] <= 250 lines
 - [ ] All bullet points are declarative
 - [ ] No general programming knowledge
 - [ ] Versions specified for key dependencies
 - [ ] File paths use clickable markdown links
 - [ ] No narrative paragraphs > 2 sentences
+- [ ] Detailed patterns use `@import` references
 
 ### Improvement Indicators
-- Line count > 100: Needs trimming
+- Line count > 250: Move patterns to separate files
 - "You should" phrases: Convert to imperatives
-- Long code blocks: Move to separate reference file
+- Long code blocks (>10 lines): Move to pattern file
 - Detailed explanations: Summarize or remove
+- Step-by-step guides: Use `@import` reference

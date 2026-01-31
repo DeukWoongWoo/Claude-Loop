@@ -1,6 +1,6 @@
 ---
 name: commit-organizer
-description: Analyze git changes and organize into logical commits with MR description. Use when user asks to review changes, organize commits, create MR, or has many uncommitted changes.
+description: Git commit workflow. Analyzes, organizes, groups, and documents git changes into logical commits with MR descriptions. Use for any commit organization-related task.
 ---
 
 # Commit Organizer
@@ -83,7 +83,9 @@ git add <files> && git commit -m "<type>: <message>"
 
 ## Commit Message Format
 
-Use conventional commits:
+**CRITICAL: Use single-line commits only. Do NOT add body or trailers.**
+
+Use conventional commits with `-m "message"` format:
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `docs:` - Documentation
@@ -91,9 +93,36 @@ Use conventional commits:
 - `test:` - Adding tests
 - `chore:` - Maintenance tasks
 
-Keep messages concise (one line, under 72 chars).
+**Rules:**
+- One line only, under 72 characters
+- Use simple `-m "message"` format, NOT HEREDOC
+- Do NOT add commit body
+- Do NOT add "Generated with Claude Code" trailer
+- Do NOT add "Co-Authored-By" trailer
 
 ## Examples
+
+### Correct vs Wrong Commit Format
+
+**CORRECT - single line only:**
+```bash
+git add src/auth.ts && git commit -m "feat: Add user authentication"
+```
+
+**WRONG - do not use HEREDOC or multi-line:**
+```bash
+# DO NOT DO THIS
+git commit -m "$(cat <<'EOF'
+feat: Add user authentication
+
+Some description here...
+
+Generated with Claude Code
+
+Co-Authored-By: ...
+EOF
+)"
+```
 
 ### Good Commit Grouping
 
