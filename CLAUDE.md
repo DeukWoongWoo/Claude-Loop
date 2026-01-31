@@ -118,6 +118,14 @@ internal/
     decomposer.go           # DefaultDecomposer (Architecture → TaskGraph orchestration)
     taskfile.go             # Hybrid storage (YAML frontmatter + Markdown body)
     *_test.go               # Unit tests (90% coverage)
+  verifier/
+    types.go                # Verifier interface, VerificationTask, VerificationResult, Evidence types
+    errors.go               # VerifierError, CheckError types
+    checker.go              # Checker interface and implementations (FileExists, Build, Test, ContentMatch)
+    registry.go             # CheckerRegistry for checker management
+    prompt.go               # PromptBuilder for AI-based verification
+    verifier.go             # DefaultVerifier implementation
+    *_test.go               # Unit tests (94% coverage)
   update/
     types.go                # Core types, options (DownloaderOptions, InstallerOptions)
     errors.go               # UpdateError, VersionError, ChecksumError
