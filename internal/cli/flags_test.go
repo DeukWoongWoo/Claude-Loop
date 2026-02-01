@@ -36,6 +36,11 @@ func TestDefaultFlags(t *testing.T) {
 	assert.False(t, f.Stream)
 	assert.False(t, f.AutoUpdate)
 	assert.False(t, f.DisableUpdates)
+
+	// Planning mode defaults should be false/empty
+	assert.False(t, f.Plan)
+	assert.False(t, f.PlanOnly)
+	assert.Empty(t, f.Resume)
 }
 
 func TestFlagParsing(t *testing.T) {
@@ -194,6 +199,28 @@ func TestFlagParsing(t *testing.T) {
 			validate: func(t *testing.T) {
 				assert.True(t, globalFlags.Verbose)
 				assert.True(t, globalFlags.Stream)
+			},
+		},
+		{
+			name: "plan flag",
+			args: []string{"-p", "test", "--plan", "-m", "1"},
+			validate: func(t *testing.T) {
+				assert.True(t, globalFlags.Plan)
+				assert.False(t, globalFlags.PlanOnly)
+			},
+		},
+		{
+			name: "plan-only flag",
+			args: []string{"-p", "test", "--plan-only", "-m", "1"},
+			validate: func(t *testing.T) {
+				assert.True(t, globalFlags.PlanOnly)
+			},
+		},
+		{
+			name: "resume flag",
+			args: []string{"--resume", "plan-123456789", "-m", "1"},
+			validate: func(t *testing.T) {
+				assert.Equal(t, "plan-123456789", globalFlags.Resume)
 			},
 		},
 	}

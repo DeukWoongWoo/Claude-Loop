@@ -7,19 +7,11 @@ import (
 	"github.com/DeukWoongWoo/claude-loop/internal/planner"
 )
 
-// ClaudeClient executes Claude Code iterations.
-// Defined here to avoid import cycles with the loop package.
-type ClaudeClient interface {
-	Execute(ctx context.Context, prompt string) (*IterationResult, error)
-}
+// ClaudeClient is an alias for planner.ClaudeClient to enable centralized adapter usage.
+type ClaudeClient = planner.ClaudeClient
 
-// IterationResult mirrors loop.IterationResult to avoid import cycles.
-type IterationResult struct {
-	Output                string
-	Cost                  float64
-	Duration              time.Duration
-	CompletionSignalFound bool
-}
+// IterationResult is an alias for planner.IterationResult to enable centralized adapter usage.
+type IterationResult = planner.IterationResult
 
 // Generator creates PRDs from user prompts.
 type Generator interface {

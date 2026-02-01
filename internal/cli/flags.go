@@ -52,6 +52,11 @@ type Flags struct {
 	// Update management
 	AutoUpdate     bool // --auto-update: Auto-install updates
 	DisableUpdates bool // --disable-updates: Skip update checks
+
+	// Planning mode
+	Plan     bool   // --plan: Enable planning mode (PRD → Architecture → Tasks)
+	PlanOnly bool   // --plan-only: Generate plan without execution
+	Resume   string // --resume: Resume from saved plan ID
 }
 
 // DefaultFlags returns a Flags struct with default values as defined in CLI_CONTRACT.md.

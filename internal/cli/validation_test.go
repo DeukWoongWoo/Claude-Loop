@@ -297,3 +297,83 @@ func TestValidationErrorFields(t *testing.T) {
 	assert.Equal(t, "prompt", ve.Field)
 	assert.Contains(t, ve.Message, "prompt is required")
 }
+
+func TestValidatePlanningFlags(t *testing.T) {
+	tests := []struct {
+		name    string
+		flags   *Flags
+		wantErr string
+	}{
+		{
+			name: "plan mode requires prompt",
+			flags: &Flags{
+				Plan:    true,
+				MaxRuns: 5,
+			},
+			wantErr: "--plan requires --prompt",
+		},
+		{
+			name: "plan-only mode requires prompt",
+			flags: &Flags{
+				PlanOnly: true,
+				MaxRuns:  5,
+			},
+			wantErr: "--plan-only requires --prompt",
+		},
+		{
+			name: "plan mode with prompt is valid",
+			flags: &Flags{
+				Plan:    true,
+				Prompt:  "test",
+				MaxRuns: 5,
+			},
+			wantErr: "",
+		},
+		{
+			name: "plan-only mode with prompt is valid",
+			flags: &Flags{
+				PlanOnly: true,
+				Prompt:   "test",
+				MaxRuns:  5,
+			},
+			wantErr: "",
+		},
+		{
+			name: "resume mode does not require prompt",
+			flags: &Flags{
+				Resume:  "plan-123456789",
+				MaxRuns: 5,
+			},
+			wantErr: "",
+		},
+		{
+			name: "resume and plan-only conflict",
+			flags: &Flags{
+				Resume:   "plan-123456789",
+				PlanOnly: true,
+				MaxRuns:  5,
+			},
+			wantErr: "--plan-only and --resume cannot be used together",
+		},
+		{
+			name: "resume mode bypasses prompt requirement",
+			flags: &Flags{
+				Resume: "plan-123456789",
+			},
+			wantErr: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.flags.Validate()
+
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+			}
+		})
+	}
+}

@@ -55,6 +55,35 @@ func (f *Flags) validateMergeStrategy() *ValidationError {
 	}
 }
 
+// validatePlanningFlags checks planning mode flag combinations.
+func (f *Flags) validatePlanningFlags() *ValidationError {
+	// --plan-only and --resume are mutually exclusive
+	if f.PlanOnly && f.Resume != "" {
+		return &ValidationError{
+			Field:   "planning",
+			Message: "--plan-only and --resume cannot be used together",
+		}
+	}
+
+	// --plan-only requires --prompt
+	if f.PlanOnly && f.Prompt == "" {
+		return &ValidationError{
+			Field:   "planning",
+			Message: "--plan-only requires --prompt",
+		}
+	}
+
+	// --plan requires --prompt (unless resuming)
+	if f.Plan && f.Prompt == "" && f.Resume == "" {
+		return &ValidationError{
+			Field:   "planning",
+			Message: "--plan requires --prompt (or use --resume to continue a saved plan)",
+		}
+	}
+
+	return nil
+}
+
 // validateNonNegative checks that numeric values are not negative.
 func (f *Flags) validateNonNegative() *ValidationError {
 	if f.MaxRuns < 0 {
@@ -97,6 +126,11 @@ func (f *Flags) Validate() error {
 		return nil
 	}
 
+	// Planning mode has different validation rules
+	if f.isPlanningMode() {
+		return f.validateForPlanningMode()
+	}
+
 	if err := f.validatePrompt(); err != nil {
 		return err
 	}
@@ -113,6 +147,44 @@ func (f *Flags) Validate() error {
 	return nil
 }
 
+// isPlanningMode checks if any planning mode flag is set.
+func (f *Flags) isPlanningMode() bool {
+	return f.Plan || f.PlanOnly || f.Resume != ""
+}
+
+// validateForPlanningMode validates flags specific to planning mode.
+func (f *Flags) validateForPlanningMode() error {
+	// Check planning-specific flags first
+	if err := f.validatePlanningFlags(); err != nil {
+		return err
+	}
+
+	// --resume doesn't require --prompt
+	if f.Resume != "" {
+		// Only validate non-negative values
+		if err := f.validateNonNegative(); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// --plan and --plan-only require --prompt
+	if err := f.validatePrompt(); err != nil {
+		return err
+	}
+	if err := f.validateNonNegative(); err != nil {
+		return err
+	}
+
+	// Planning mode doesn't require limits (plan phases handle their own execution)
+	// But if limits are provided, they should be valid
+	if err := f.validateMergeStrategy(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ValidateAll runs all validation checks and returns all errors found.
 func (f *Flags) ValidateAll() []error {
 	if f.ListWorktrees {
@@ -120,6 +192,26 @@ func (f *Flags) ValidateAll() []error {
 	}
 
 	var errs []error
+
+	// Planning mode validation
+	if f.isPlanningMode() {
+		if err := f.validatePlanningFlags(); err != nil {
+			errs = append(errs, err)
+		}
+		// For --resume, skip prompt validation
+		if f.Resume == "" {
+			if err := f.validatePrompt(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if err := f.validateNonNegative(); err != nil {
+			errs = append(errs, err)
+		}
+		if err := f.validateMergeStrategy(); err != nil {
+			errs = append(errs, err)
+		}
+		return errs
+	}
 
 	if err := f.validatePrompt(); err != nil {
 		errs = append(errs, err)

@@ -16,7 +16,7 @@ Autonomous AI development loop CLI written in Go.
 |----------|-------------|
 | [README.md](README.md) | User guide, installation, CLI reference |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor guidelines, dev setup |
-| [docs/CLI_CONTRACT.md](docs/CLI_CONTRACT.md) | CLI interface contract (28 flags) |
+| [docs/CLI_CONTRACT.md](docs/CLI_CONTRACT.md) | CLI interface contract (31 flags) |
 | [docs/PRINCIPLES_SCHEMA.md](docs/PRINCIPLES_SCHEMA.md) | principles.yaml schema |
 | [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) | Implementation status tracking |
 
@@ -26,9 +26,10 @@ Autonomous AI development loop CLI written in Go.
 cmd/claude-loop/main.go     # Entry point
 internal/
   cli/
-    root.go                 # Cobra root command, flag registration, main loop execution
-    flags.go                # Flags struct, defaults
-    validation.go           # CLI validation logic
+    root.go                 # Cobra root command, flag registration, main loop, planning mode
+    flags.go                # Flags struct, defaults (including --plan, --plan-only, --resume)
+    validation.go           # CLI validation logic (standard + planning mode validation)
+    formatter.go            # Tool output formatting
     *_test.go               # Unit tests (95%+ coverage)
   version/version.go        # Version info (set via ldflags)
   config/
@@ -87,29 +88,32 @@ internal/
     council.go              # DefaultCouncil implementation
     *_test.go               # Unit tests (93% coverage)
   prd/
-    types.go                # PRD extended type, Config, Generator interface
+    types.go                # PRD extended type, Config, Generator interface (ClaudeClient alias)
     errors.go               # PRDError, ValidationError types
     parser.go               # Claude output parsing (regex-based section extraction)
     validator.go            # PRD validation (goals, requirements, success criteria)
     generator.go            # DefaultGenerator implementation
+    phase.go                # PlanningPhase implementation for PRD generation
     *_test.go               # Unit tests (100% coverage)
   architecture/
-    types.go                # Architecture extended type, Config, Generator interface
+    types.go                # Architecture extended type, Config, Generator interface (ClaudeClient alias)
     errors.go               # ArchitectureError, ValidationError types
     parser.go               # Claude output parsing (Components, Dependencies, FileStructure, TechDecisions)
     validator.go            # Architecture validation (components, file structure, tech decisions)
     generator.go            # DefaultGenerator implementation
+    phase.go                # PlanningPhase implementation for Architecture generation
     *_test.go               # Unit tests (97% coverage)
   planner/
-    types.go                # Plan, PRD, Architecture, TaskGraph, Task types
+    types.go                # Plan, PRD, Architecture, TaskGraph, Task, ClaudeClient, IterationResult types
     errors.go               # PlannerError type
     prompt.go               # PromptBuilder for planning phases
     runner.go               # PhaseRunner (orchestrates PRD → Architecture → Tasks)
-    phase.go                # PlanningPhase interface
+    phase.go                # PlanningPhase interface, PhaseResult type
     persistence.go          # FilePersistence (atomic writes, YAML serialization)
-    *_test.go               # Unit tests
+    adapter.go              # ClaudeClientAdapter (loop.ClaudeClient → planner.ClaudeClient)
+    *_test.go               # Unit tests (95%+ coverage)
   decomposer/
-    types.go                # Extended Task, TaskGraph, Config, Decomposer interface
+    types.go                # Extended Task, TaskGraph, Config, Decomposer interface (ClaudeClient alias)
     errors.go               # DecomposerError, ValidationError, GraphError types
     parser.go               # Claude output parsing (regex-based task extraction)
     validator.go            # Task validation (ID format, uniqueness, dependencies)
@@ -117,6 +121,7 @@ internal/
     scheduler.go            # Topological sort scheduling
     decomposer.go           # DefaultDecomposer (Architecture → TaskGraph orchestration)
     taskfile.go             # Hybrid storage (YAML frontmatter + Markdown body)
+    phase.go                # PlanningPhase implementation for task decomposition
     *_test.go               # Unit tests (90% coverage)
   verifier/
     types.go                # Verifier interface, VerificationTask, VerificationResult, Evidence types

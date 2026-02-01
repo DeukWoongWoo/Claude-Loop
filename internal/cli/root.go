@@ -11,10 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DeukWoongWoo/claude-loop/internal/architecture"
 	"github.com/DeukWoongWoo/claude-loop/internal/claude"
 	"github.com/DeukWoongWoo/claude-loop/internal/config"
+	"github.com/DeukWoongWoo/claude-loop/internal/decomposer"
 	"github.com/DeukWoongWoo/claude-loop/internal/git"
 	"github.com/DeukWoongWoo/claude-loop/internal/loop"
+	"github.com/DeukWoongWoo/claude-loop/internal/planner"
+	"github.com/DeukWoongWoo/claude-loop/internal/prd"
 	"github.com/DeukWoongWoo/claude-loop/internal/principles"
 	"github.com/DeukWoongWoo/claude-loop/internal/update"
 	"github.com/DeukWoongWoo/claude-loop/internal/version"
@@ -98,6 +102,9 @@ OPTIONAL FLAGS:
     --log-decisions               Enable decision logging to .claude/principles-decisions.log
     --verbose                     Show detailed iteration summaries
     --stream                      Stream Claude output in real-time
+    --plan                        Enable planning mode (PRD → Architecture → Tasks)
+    --plan-only                   Generate plan without execution (implies --plan)
+    --resume <plan-id>            Resume from saved plan ID
 
 COMMANDS:
     update                        Check for and install the latest version
@@ -332,6 +339,11 @@ func registerFlags(cmd *cobra.Command) {
 	// Update management
 	flags.BoolVar(&f.AutoUpdate, "auto-update", false, "Automatically install updates when available")
 	flags.BoolVar(&f.DisableUpdates, "disable-updates", false, "Skip all update checks and prompts")
+
+	// Planning mode
+	flags.BoolVar(&f.Plan, "plan", false, "Enable planning mode (PRD → Architecture → Tasks)")
+	flags.BoolVar(&f.PlanOnly, "plan-only", false, "Generate plan without execution (implies --plan)")
+	flags.StringVar(&f.Resume, "resume", "", "Resume from saved plan ID")
 }
 
 // parseDuration parses the max-duration flag if provided.
@@ -378,6 +390,102 @@ func handleListWorktrees() {
 	fmt.Print(wm.FormatList(worktrees))
 }
 
+// runPlanningMode executes the planning workflow (PRD → Architecture → Tasks).
+func runPlanningMode(ctx context.Context, flags *Flags) error {
+	// Create Claude client with optional streaming
+	var clientOpts *claude.ClientOptions
+	if flags.Stream {
+		clientOpts = &claude.ClientOptions{StreamHandler: NewConsoleStreamHandler()}
+	}
+	claudeClient := claude.NewClient(clientOpts)
+
+	// claude.Client implements loop.ClaudeClient, wrap with planner adapter
+	adapter := planner.NewClaudeClientAdapter(claudeClient)
+
+	// Create Phase implementations
+	prdGenerator := prd.NewGenerator(nil, adapter)
+	archGenerator := architecture.NewGenerator(nil, adapter)
+	taskDecomposer := decomposer.NewDecomposer(nil, adapter)
+
+	phases := []planner.PlanningPhase{
+		prd.NewPhase(prdGenerator),
+		architecture.NewPhase(archGenerator),
+		decomposer.NewPhase(taskDecomposer),
+	}
+
+	// Create PhaseRunner
+	plannerConfig := planner.DefaultConfig()
+	runner := planner.NewPhaseRunner(plannerConfig, nil, phases...)
+
+	// Resume mode: load and continue existing plan
+	if flags.Resume != "" {
+		planPath := runner.Persistence().DefaultPlanPath(flags.Resume)
+		fmt.Printf("Resuming plan from: %s\n", planPath)
+
+		result, err := runner.ResumePlan(ctx, planPath)
+		if err != nil {
+			return fmt.Errorf("failed to resume plan: %w", err)
+		}
+
+		displayPlanResult(result)
+
+		if flags.PlanOnly {
+			return nil
+		}
+
+		// TODO: Execute tasks from result.Plan.TaskGraph
+		fmt.Println("Task execution not yet implemented")
+		return nil
+	}
+
+	// Create new Plan with timestamp-based ID
+	planID := fmt.Sprintf("plan-%d", time.Now().UnixNano())
+	plan := planner.NewPlan(planID, flags.Prompt)
+
+	fmt.Printf("Starting planning mode (ID: %s)\n", planID)
+	fmt.Printf("Prompt: %s\n\n", flags.Prompt)
+
+	// Run planning phases
+	result, err := runner.Run(ctx, plan)
+	if err != nil {
+		return fmt.Errorf("planning failed: %w", err)
+	}
+
+	displayPlanResult(result)
+
+	// If --plan-only, stop here
+	if flags.PlanOnly {
+		fmt.Printf("\nPlan saved. Resume with: claude-loop --resume %s\n", planID)
+		return nil
+	}
+
+	// TODO: Execute tasks from plan.TaskGraph
+	fmt.Println("\nTask execution not yet implemented")
+	return nil
+}
+
+// displayPlanResult displays the planning result summary.
+func displayPlanResult(result *planner.RunResult) {
+	fmt.Println("\n=== Planning Complete ===")
+	if result.Plan != nil {
+		fmt.Printf("Completed phases: %v\n", result.Plan.CompletedPhases)
+	}
+	fmt.Printf("Total cost: $%.4f\n", result.TotalCost)
+	fmt.Printf("Duration: %s\n", result.TotalDuration.Round(time.Second))
+
+	if result.Plan != nil {
+		if result.Plan.PRD != nil {
+			fmt.Printf("PRD goals: %d\n", len(result.Plan.PRD.Goals))
+		}
+		if result.Plan.Architecture != nil {
+			fmt.Printf("Architecture components: %d\n", len(result.Plan.Architecture.Components))
+		}
+		if result.Plan.TaskGraph != nil {
+			fmt.Printf("Tasks: %d\n", len(result.Plan.TaskGraph.Tasks))
+		}
+	}
+}
+
 // displayLoopResult displays the final loop result.
 func displayLoopResult(result *loop.LoopResult) {
 	state := result.State
@@ -410,8 +518,8 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// If no arguments and no prompt provided, show help
-	if len(args) == 0 && globalFlags.Prompt == "" {
+	// If no arguments and no prompt provided (and not resuming), show help
+	if len(args) == 0 && globalFlags.Prompt == "" && globalFlags.Resume == "" {
 		_ = cmd.Help()
 		return
 	}
@@ -431,6 +539,15 @@ func runMainLoop(cmd *cobra.Command, args []string) {
 
 	// Check for updates at startup
 	checkForUpdatesAtStartup(ctx, globalFlags)
+
+	// Check for planning mode
+	if globalFlags.Plan || globalFlags.PlanOnly || globalFlags.Resume != "" {
+		if err := runPlanningMode(ctx, globalFlags); err != nil {
+			fmt.Fprintf(os.Stderr, "Planning failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	// Load or collect principles
 	loadedPrinciples, err := loadOrCollectPrinciples(ctx, globalFlags)

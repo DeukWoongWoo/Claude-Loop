@@ -1,4 +1,4 @@
-# Claude Loop CLI Contract v0.18.0
+# Claude Loop CLI Contract v0.19.0
 
 > This document defines the CLI interface contract for `claude-loop`.
 
@@ -6,12 +6,15 @@
 
 ```
 claude-loop -p "prompt" (-m max-runs | --max-cost max-cost | --max-duration duration) [options]
+claude-loop --plan -p "prompt" [options]
+claude-loop --plan-only -p "prompt" [options]
+claude-loop --resume <plan-id> [options]
 claude-loop update
 ```
 
 ---
 
-## CLI Flags (28 flags)
+## CLI Flags (31 flags)
 
 ### Required Options (at least one limit required)
 
@@ -76,6 +79,14 @@ claude-loop update
 | `--reset-principles` | - | bool | false | Force re-collection of principles |
 | `--principles-file` | - | string | ".claude/principles.yaml" | Custom principles file path |
 | `--log-decisions` | - | bool | false | Enable decision logging to .claude/principles-decisions.log |
+
+### Planning Mode
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--plan` | - | bool | false | Enable planning mode (PRD → Architecture → Tasks) |
+| `--plan-only` | - | bool | false | Generate plan without execution (implies --plan) |
+| `--resume` | - | string | - | Resume from saved plan ID |
 
 ### Update Management
 
@@ -179,12 +190,14 @@ claude-loop -p "prompt" -m 5 --model opus
 
 ## Validation Rules
 
-1. **Prompt required**: `-p` or `--prompt` must be provided
-2. **Limit required**: At least one of `--max-runs`, `--max-cost`, or `--max-duration`
+1. **Prompt required**: `-p` or `--prompt` must be provided (except with `--resume`)
+2. **Limit required**: At least one of `--max-runs`, `--max-cost`, or `--max-duration` (standard mode only)
 3. **Zero max-runs**: If `--max-runs 0`, must have `--max-cost` or `--max-duration`
 4. **GitHub required**: Unless `--disable-commits`, must have valid GitHub repo (auto-detect or explicit)
 5. **Merge strategy**: Must be one of: `squash`, `merge`, `rebase`
 6. **Duration format**: Must match pattern: `(\d+h)?(\d+m)?(\d+s)?`
+7. **Planning mode**: `--plan-only` and `--resume` cannot be used together
+8. **Planning prompt**: `--plan` and `--plan-only` require `--prompt`; `--resume` does not
 
 ---
 
